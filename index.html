@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>말씀나눔 성경읽기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap">
+<style>
+  :root{
+    /* 종이(라이트): 가죽 성경의 면지를 닮은 서늘한 아이보리 */
+    --bg:#f5f3ec; --surface:#ffffff; --border:#e2ddcf; --text:#241f1a; --text-dim:#78705f;
+    /* 리본 책갈피(버건디) + 금박 페이지 끝(골드) — 두 개의 역할이 다른 강조색 */
+    --accent:#7c2f3d; --accent-soft:#f4e4e6; --read:#b8873a; --read-text:#fff9ef;
+    --danger:#a4402f; --shadow:0 1px 2px rgba(36,31,26,.06),0 6px 16px rgba(36,31,26,.06);
+    --error-bg:#fbe9e4;
+    --font-serif:"Source Serif 4",Georgia,"Noto Serif KR",serif;
+    --font-ui:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      /* 어두운 가죽 장정 */
+      --bg:#181410; --surface:#231d17; --border:#382f24; --text:#ece4d6; --text-dim:#a89a83;
+      --accent:#d98a97; --accent-soft:#3a2229; --read:#d1a75c; --read-text:#211705;
+      --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.3);
+      --danger:#e2917e;
+      --error-bg:#392019;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#181410; --surface:#231d17; --border:#382f24; --text:#ece4d6; --text-dim:#a89a83;
+    --accent:#d98a97; --accent-soft:#3a2229; --read:#d1a75c; --read-text:#211705;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.3);
+    --danger:#e2917e;
+    --error-bg:#392019;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--text); font-family:var(--font-ui); font-variant-numeric:tabular-nums;}
+  #app{max-width:720px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+  header{position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--border); padding:10px 14px;}
+  .topbar{display:flex; align-items:center; gap:8px;}
+  .brand{font-family:var(--font-serif); font-weight:600; font-size:16px; letter-spacing:.2px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  select, button{font-family:inherit;}
+  .btn{border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:10px; padding:8px 12px; font-size:13px; cursor:pointer;}
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;}
+  .btn-ghost{background:transparent; border-color:transparent;}
+  .icon-btn{width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:9px; border:1px solid var(--border); background:var(--surface); cursor:pointer; font-size:16px;}
+  select.version-select{border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:10px; padding:7px 8px; font-size:13px; max-width:150px;}
+  .crumbs{display:flex; align-items:center; gap:6px; margin-top:8px; font-size:12.5px; color:var(--text-dim); overflow-x:auto; white-space:nowrap;}
+  .update-banner{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; padding:8px 12px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:10px; font-size:12.5px; color:var(--text);}
+  .inapp-banner{display:none; flex-direction:column; align-items:flex-start; gap:8px; margin-top:8px; padding:10px 12px; background:var(--error-bg); border:1px solid var(--danger); border-radius:10px; font-size:12.5px; color:var(--text); line-height:1.6;}
+  .inapp-banner .title{font-weight:700; color:var(--danger);}
+  .inapp-banner .btn{margin-top:2px;}
+  .crumbs span.clickable{cursor:pointer; color:var(--accent);}
+  main{flex:1; padding:16px 14px 90px;}
+  .center-pane{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; gap:14px; padding:20px;}
+  .center-pane h1{font-size:20px; margin:0;}
+  .center-pane p{color:var(--text-dim); font-size:13.5px; line-height:1.6; margin:0; max-width:380px;}
+  .section-title{font-size:12.5px; color:var(--text-dim); margin:18px 0 8px; font-weight:600; letter-spacing:.3px;}
+  .book-list{display:flex; flex-direction:column; gap:8px;}
+  .book-row{display:flex; align-items:center; justify-content:space-between; padding:13px 14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; cursor:pointer; box-shadow:var(--shadow);}
+  .book-row .name{font-size:15px; font-weight:600;}
+  .book-row .sub{font-family:var(--font-serif); font-style:italic; font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+  .book-row .progress{font-family:var(--font-serif); font-size:11.5px; color:var(--accent); font-weight:600;}
+  .chapter-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
+  .chapter-btn{font-family:var(--font-serif); aspect-ratio:1; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .chapter-btn.read{background:var(--read); border-color:var(--read); color:var(--read-text);}
+  .verse-btn{font-family:var(--font-serif); aspect-ratio:1; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:13.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .verse-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:7px;}
+  .verse-row.highlight{background:var(--accent-soft); border-radius:8px; scroll-margin-top:70px;}
+  .verse-view{display:flex; flex-direction:column; gap:2px;}
+  .verse-row{display:flex; gap:8px; padding:7px 2px; font-size:16px; line-height:1.75;}
+  .verse-num{font-family:var(--font-serif); color:var(--accent); font-weight:700; font-size:12.5px; min-width:22px; padding-top:3px;}
+  .verse-text{flex:1;}
+  .audio-bar{position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; align-items:center; gap:10px; max-width:720px; margin:0 auto;}
+  .audio-bar audio{flex:1; height:32px;}
+  .chapter-nav{position:fixed; left:0; right:0; bottom:0; z-index:5; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; gap:8px; max-width:720px; margin:0 auto;}
+  .chapter-nav .btn{flex:1;}
+  .empty-hint{color:var(--text-dim); font-size:13px; text-align:center; padding:30px 10px;}
+  .badge{display:inline-block; font-size:10.5px; padding:2px 7px; border-radius:100px; background:var(--accent-soft); color:var(--accent); font-weight:700; margin-left:6px;}
+  .setup-steps{text-align:left; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.9; color:var(--text-dim); max-width:380px;}
+  .setup-steps b{color:var(--text);}
+  .error-box{background:var(--error-bg); border:1px solid #f0c4b3; color:var(--danger); border-radius:10px; padding:10px 12px; font-size:12.5px; max-width:380px;}
+  .rename-input{border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:8px; padding:6px 8px; font-size:13px; width:100%;}
+  .version-item{display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; margin-bottom:6px;}
+  .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:20; display:flex; align-items:flex-end; justify-content:center;}
+  .modal-sheet{background:var(--surface); width:100%; max-width:720px; border-radius:16px 16px 0 0; padding:16px; max-height:78vh; overflow-y:auto;}
+  .modal-sheet h3{margin:0 0 12px; font-size:15px;}
+  .spinner{width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .row{display:flex; align-items:center; gap:8px;}
+  .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
+</style>
+
+<meta name="app-build" content="2026-09-07-5">
+<meta name="theme-color" content="#7c2f3d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="성경읽기">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAAEWklEQVR4nO3dPW4bRxyHYVLOfXSBsFCfA+QDqnMGIyoV6AypjSA+QHoX8gV0IEMpAgoSTVK73Jmdnd8+T+WC5u5wX/41XALSdrMAd9e759bnwHT3T4/b1ufQ5AQEvA4tAp/tgCJet7nirnoQEXNMzbirPLGQGaJG2Feln1DMDFWjlWLvECEzRalpXWRCi5mpSjU06V0hZGqYMq0vntBippYpbV30ThDzeT/+/G3Q475+/lD5TPp2yaQePaHFzFwuaW1U0GJmbmObGxy0mGllTHuDghYzrQ1t8N2gxcxSDGmx+Fff0NLZoE1nlua9Jk8GLWaW6lybthxEORq06czSnWr0u6DFTC+OtWrLQZQ3QZvO9OawWROaKIImykvQthv06nW7JjRRBE2Uq83GdoP+7Rs2oYkiaKIImihX9s+kuLvePZvQRBE0UQRNFEETRdBEETRRBE0UQRNF0EQRNFEETRRBE0XQRBE0UQRNFEETRdBEETRRBE0UQRNF0EQRNFEETRRBE0XQRBE0UQRNFEETRdBEmT3oj18+zX1IGmlxrX+Y/Yibtwt9uLltcQpU0npgNQn6tVMvQC+hHzv/x79+vfj/9rzuJWge9CmHL9iSLnTNi7nUn15LDfjQYoM+1GKSt76Ia1zzVN0EfUrvF+ASa1zzUG7bEUXQROl+y7FEXz9/GPS43e+VT2SFTOgKhuxx7YPrEHQlgm1D0BWdilrs9Qh6ZmKuS9CVCXhegp7BPuqf/vyl8Znk6+a23cPN7W+tz+G1j18+/T3m8WNj7n29rXQTdC8vaClrW28pthxEETRRBE0UQRNF0EQRNFG6uW23tvuya1tvKd0E3csLWsra1luKLQdRBE0UQRNF0EQRNFEETRRBE6Wb+9Br+6JhbestpZuge3lBS1nbekux5SCKoIkiaKIImiiCJoqgiSJoogiaKIImiqCJImiiCJoogiaKoIkiaKIImiiCJoqgiSJoogiaKIImiqCJImiiCJoogibK9u5699zq4Ps/6p7q4eb25d/7v/X97x//rGrdc2v6q8BOLby3Cz72Aq513XNoOqGnmiOApV20Na55jK6DhkM+FBJF0EQRNFEETRRBE0XQRBE0UQRNFEETRdBEETRRBE0UQRNF0EQRNFEETRRBE0XQRBE0UQRNFEET5er+6XHb+iSghPunx60JTRRBE0XQRLnabP7fe7Q+EZhi37AJTRRBE+UlaNsOevW6XROaKIImypugbTvozWGzJjRRvgvalKYXx1o9OqFFzdKdatSWgygngzalWapzbZ6d0KJmad5r0paDKO8GbUqzFENaHDShRU1rQxscvOUQNa2MaW/UHlrUzG1sc6M/FIqauVzS2kV3OURNbZc2dvFtO1FTy5S2ikR5d717LvE8rFuJIVnkixXTmqlKNVQ8RNOaMUoPw+JffZvWDFWjlarxmdYcU3PozTZNxb1uc/3kbrI9EPc6tNh+LmK/K/AMS/j89B/l70MQSR+9tAAAAABJRU5ErkJggg==">
+<link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoi66eQ7JSA64KY64iUIOyEseqyveydveq4sCIsInNob3J0X25hbWUiOiLshLHqsr3snb3quLAiLCJkZXNjcmlwdGlvbiI6ImJpYmxlIO2PtOuNlOulvCDsl7DqsrDtlbQg7ISc67KEIOyXhuydtCDshLHqsr3snYQg7J296rOgIOuTo+uKlCDslbEiLCJzdGFydF91cmwiOiIuIiwic2NvcGUiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJvcmllbnRhdGlvbiI6InBvcnRyYWl0IiwiYmFja2dyb3VuZF9jb2xvciI6IiNmNWYzZWMiLCJ0aGVtZV9jb2xvciI6IiM3YzJmM2QiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFNQUFBQURBQ0FZQUFBQlMzR3dIQUFBRXpVbEVRVlI0bk8zY1FWTGpSaGlHWWNIa1Bsd2dYckNmQTJTU1lwMHpVR0hKRkdmSW1rcGxEcEE5QytZQ0hHaUtMRklRQTBaSWNrdXQxdmM4cTFtQUxVdi9xMjdiMUp4MEszTjF0bnVzZlF6TTUvcmgvcVQyTWV5cmVqQ0duYTZyRzhYaVQyem82Yk4wRElzOW1jRm5qS1ZDbVAxSkREN0htRHVFMlI3YzRGUFNYQ0VVZjFDRHo1eEtoM0JhOHNFTVAzTXJQV05GYWpMNDFGQmlOVGg2QlREODFGSmk5bzRLd1BCVDI3RXpPSGtKTWZ6ai9QekxqMUUvLy8zYnA1bU9aSnVtYm9jbXJRQ0duN1daT3BPakF6RDhyTldVMlJ3VmdPRm43Y2JPNk9BQUREK3RHRE9yZ3dJdy9MUm02TXgrR0lEaHAxVkRacmZvbjBKQWEzb0RjUGVuZFIvTjhMc0JHSDYyb20rV2JZR0lkakFBZDMrMjVyMlp0Z0lRN1UwQTd2NXMxYUhadGdJUTdVVUE3djVzM2VzWnR3SVE3VGtBZDM5UzdNKzZGWUJvQWlEYWFkZlovcERuYWVhdEFFUVRBTkVFUURRQkVPM1VHMkJTWFozdEhxMEFSQk1BMFFSQU5BRVFUUUJFRXdEUkJFQTBBUkJOQUVRVEFORUVRRFFCRUUwQVJCTUEwUVJBTkFFUVRRQkVFd0RSQkVBMEFSQk5BRVFUQU5FRVFEUUJFRTBBUkJNQTBRUkFOQUVRVFFCRUV3RFJxZ1Z3ZVhkYjY2bFptWnF6OEZPMVorNWV2dkNiODR1S1I4TFMxbklEckJyQXZ0Y25aRXRCWE43ZGR2ZC8vanI2ZDdaMkR0Wm9OUUc4MXZycVVPS0NPd2Z6VzIwQSsvcE9aTTNCV1BJQ093ZnphQ0tBUGtNdXdOZ0JhZTJpRGozZXJaK0hLWm9QWUlpRUN6bUU4L0NXN3dHSUpnQ2lSV3lCMXVEN3QwK2pmbjczKzB3SHdndFdnSVdNMlgvYnF5OUhBQXNhTXRpR2Yxa0NXRmpmZ0J2KzVRbWdBb08rSGdLbzVIVUVvcWhEQUJVOURmM25yMThxSDBtdUpqOEd2VG0vK0szMk1SeHllWGY3MTlqZm1UTDhXM3I5dFRVWlFJc251cVQwMTErU0xSRFJCRUEwQVJCTkFFUVRBTkVFUURRQkVLM0o3d0hTdndoS2YvMGxOUmxBaXllNnBQVFhYNUl0RU5FRVFEUUJFRTBBUkJNQTBRUkFOQUVRcmNudkFkSy9DRXAvL1NVMUdVQ0xKN3FrOU5kZmtpMFEwUVJBTkFFUVRRQkVFd0RSQkVBMEFSQk5BRVFUQU5FRVFEUUJFRTBBUkJNQTBRUkFOQUVRVFFCRUV3RFJCRUEwQVJCTkFFUVRBTkVFUURRQkVFMEFSQk1BMFFSQU5BRVE3ZVRxYlBkWSt5QXU3MjVySDhLaWJzNHZudi85K2V1WHJ1dTY3cDgvL280K0Q3V3M0ai9IN1RzUkxRL0YyQXY4M3M4bm5ZT2xyV0lGbUdvTmcxSDdBanNIeDJrNmdDbjZCcWJsQ3ptR2MvQy91QUJnbjArQmlDWUFvZ21BYUFJZ21nQ0lKZ0NpQ1lCb0FpQ2FBSWdtQUtJSmdHZ0NJSm9BaUNZQW9nbUFhQUlnbWdDSUpnQ2lDWUJvQWlDYUFJaDJldjF3ZjFMN0lLQ0c2NGY3RXlzQTBRUkFOQUVRVFFCRU8rMjYvOTRNMUQ0UVdOTFR6RnNCaUNZQW9qMEhZQnRFaXYxWnR3SVE3VVVBVmdHMjd2V01Xd0dJOWlZQXF3QmJkV2kyclFCRU94aUFWWUN0ZVcrbXJRQkVlemNBcXdCYjBUZkx2U3VBQ0dqZFJ6TnNDMFMwRHdPd0N0Q3FJYk03YUFVUUFhMFpPck9EdDBBaW9CVmpablhVZXdBUnNIWmpaM1QwbTJBUnNGWlRablBTcDBBaVlHMm16dVRrajBGRndGb2NNNHRIZlE4Z0FtbzdkZ2FQL2lKTUJOUlNZdmFLRHUvVjJlNng1T1BCSVNWdnVrWC9GTUpxd054S3o5aHNBMnMxb0tTNWJxNnozN0dGd0RIbTNsVXN0bVVSQW1Nc3RaMWVmTTh1QlBvcy9UNnk2cHRXTWRCMWRUODhXZDJuTnFMWXRyVjlVdmd2QmdCb2VtZ1lRTU1BQUFBQVNVVk9SSzVDWUlJPSIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9wbmciLCJwdXJwb3NlIjoiYW55In0seyJzcmMiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQWdBQUFBSUFDQVlBQUFEMGVOVDZBQUFPZEVsRVFWUjRuTzNjUVpJVHlSbUc0YUtIKzNBQnMyQS9CL0NZWU8wekVHYkpCR2Z3bWlBOEIvQ2VCWE1CRHVUQWl3NHg2bTUxdDBxcXJQd3p2K2Zad0s1THFhVCtWMW1pWHl5VTlPSFY2eCs5cndGZ0N4Ky9mM3ZSK3hwNHlKdlNpUUVQY0VzZzlHSFJkMkRZQTZ3akN0cXp3QTBZK0FEYkVnVGJzNkFiTVBBQjlpVUlybWNCTDJUb0E5UWdCaTVqMFZZdzlBRnFFd1BuczFEUE1QUUJ4aVFHbm1aeEhtSHdBOHhCQ0p4bVVZNFkrZ0J6RXdOL3NSQ0x3UStRUmdpRUI0REJENUF0T1FRaVg3akJEOEN4eEJDSWVzRUdQd0JQU1FxQmlCZHE4QU93UmtJSTNQUytnTllNZndEV1NwZ2QweFpPd3BzSFFIdXpuZ1pNOTZJTWZnQmFtQzBFcG5vRVlQZ0QwTXBzTTJhS21wbnRUUUdndGhsT0E0WS9BVEQ4QWRqYkRMTm42QUNZNFEwQVlFeWp6NkFoanpCR1gzUUE1akxpSTRIaFRnQU1md0NxR1hFMkRSVUFJeTR3QUJsR20xRkRIRm1NdHFnQVpCdmhrVUQ1RXdEREg0RFJqREM3U2dmQUNBc0lBS2RVbjJGbEE2RDZ3Z0hBY3lyUHNwSUJVSG5CQUdDTnFqT3QzSmNVcWk0VVZQVzN2Lyt2eTgvOTg0OWZ1dnhjR0ZXMUx3YVdPZ0V3L0FHWVZiVVpWeVlBcWkwTUFHeXQwcXdyRVFDVkZnUUFXcW95ODdvSFFKV0ZBSUM5VkpoOVhRT2d3Z0lBUUErOVoyQzNBT2o5d2dHZ3Q1NnpzRXNBR1A0QWNLdlhUTnc5QUF4L0FMaXJ4MnpjTlFBTWZ3QTRiZThadVZzQUdQNEE4TFE5WitVdUFXRDRBOEI1OXBxWjNYOFBBQUN3ditZQjROTS9BS3l6eCt4c0dnQ0dQd0JjcHZVTWJSWUFoajhBWEtmbExQVWRBQUFJMUNRQWZQb0hnRzIwbXFtYkI0RGhEd0RiYWpGYk53MEF3eDhBMnRoNnh2b09BQUFFMml3QWZQb0hnTGEybkxXYkJJRGhEd0Q3MkdybWVnUUFBSUd1RGdDZi9nRmdYMXZNWGljQUFCRG9xZ0R3NlI4QStyaDJCbDhjQUlZL0FQUjF6U3oyQ0FBQUFsMFVBRDc5QTBBTmw4NWtKd0FBRUdoMUFQajBEd0MxWERLYm5RQUFRS0JWQWVEVFB3RFV0SFpHT3dFQWdFQm5CNEJQL3dCUTI1cFo3UVFBQUFLZEZRQSsvUVBBR002ZDJVNEFBQ0NRQUFDQVFNOEdnT04vQUJqTE9iUGJDUUFBQkhveUFIejZCNEF4UFRmRG5RQUFRQ0FCQUFDQkhnMEF4LzhBTUxhblpya1RBQUFJSkFBQUlOREpBSEQ4RHdCemVHeW1Pd0VBZ0VBQ0FBQUNQUWdBeC84QU1KZFRzOTBKQUFBRUVnQUFFRWdBQUVDZ093SGcrVDhBek9uK2pIY0NBQUNCQkFBQUJCSUFBQkRvWndCNC9nOEFjenVlOVU0QUFDQ1FBQUNBUUFJQUFBSUpBQUFJZExNc3ZnQUlBQ2tPTTk4SkFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFLQWJ2d01BQUxKOGVQWDZoeE1BQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDWUFOdlAvNnVmY2xBTVJ3ejkzR3k5NFhNSXZqRGZucHpidU9Wd0l3SDBOL2V3S2dBVEVBY0QxRHZ5MEIwSmdZQURpZm9iOGZBYkFqTVFEd2tLSGZod0RvUkF3QXlRejkvZ1JBQVdLQXRZNzN6TGQvLzZQN05kaTNuTVBRcjBVQUZIUC9INGdiSzh0Uy84WnAzM0pLOVgyYlRnQVVkK29ma0p2cjNHYTRhZHEzZVdiWXQya0V3SUI4MnBwTHlvM1R2cDFMeXI2ZG1RQ1lnQnZyV053NGI5bTNZN0Z2NXlNQUp1VEdXb3NiNTNuczIxcnMyL2tKZ0FDZXgrN0hUWE03OXUxKzdOdE1BaURVT2YvZzNXenZjcFBzejc1ZHo3N2xNUUtBUnoxMzQ1anRSdXRHT1FmN0ZzNGpBTGpZVmplZWEyL0lib0NzWWQvQ0xRRkFkMjZFak1pK1pYUTN2UzhBQU5pZkFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBamtGd0hCNFA3ODQ1Y3VQL2YxUDd2OFdHQWpUZ0JnY0QxK0k1M2ZnZ2ZqRXdBd2dUMEhzdUVQY3hBQU1JazlCclBoRC9NUUFEQ1JsZ1BhOEllNUNBQ1lUSXRCYmZqRGZBUUFUR2pMZ1czNHc1d0VBRXhxaThGdCtNTzhCQUJNekFBSEhpTUFZSEtYUm9CNGdMa0pBQWl3ZHBnYi9qQS9BUUFoemgzcWhqOWtFQUFRNUxuaGJ2aEREZ0VBWVI0YjhvWS9aQkVBRU9qK3NEZjhJWThBZ0ZDLy92N2JuVCtCTEFJQWdobitrT3RsN3d1Z3JVOXYzcjN0ZlEwODlQN3I1eSs5cjZFUys3UW0rM1J1VGdBQUlKQUFBSUJBSGdGTXpoRWVJN0JQWVg5T0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSU5ETDNoZEFXNS9ldkh2Yit4cDQ2UDNYejE5NlgwTWw5bWxOOXVuY25BQUFRQ0FCQUFDQlBBS1luQ004Um1DZnd2NmNBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRNkdYdkM2Q3RUMi9ldmUxOURUejAvdXZuTDcydm9STDd0Q2I3ZEc1T0FBQWdrQUFBZ0VBZUFVek9FUjRqc0U5aGYwNEFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNQVGl3NnZYUDNwZnhJemVmLzNjK3hMZ2dVOXYzdjM4KzYrLy8vYno3Ly85MTMrV1piRnZxZWw0MzdLZGw3MHZZRmIzTjZ3Ykt6MnN2WEhhdDFSZzRPL0RDVUFoYnJhc1VlVW1hZCt5UnBWOWl3QW96ODJWWlJudnBtbmZzaXpqN2RzMEFtQXdicXdaWnJ0eDJyY1padHUzc3hNQWszR2pIWU1iNVYzMjdSanMyN2tJZ0VCdXRtMjVTYlpoMzdabDMrWVJBSnprWm51YW0yUnQ5dTFwOWkybkNBQ2FxWFl6ZGhQa0hQWXRLUVFBQUFUeXE0QUJJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUEzSDc5L2U5SDdJZ0NBL1h6OC91MkZFd0FBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBTjh0eSsvOEJlMThJQU5EZVllWTdBUUNBUUFJQUFBSUpBQUFJSkFBQUlORFBBUEJGUUFDWTIvR3Nkd0lBQUlFRUFBQUVFZ0FBRU9oT0FQZ2VBQURNNmY2TWR3SUFBSUVFQUFBRUVnQUFFT2hCQVBnZUFBRE01ZFJzZHdJQUFJRUVBQUFFT2hrQUhnTUF3QndlbStsT0FBQWdrQUFBZ0VDUEJvREhBQUF3dHFkbXVSTUFBQWdrQUFBZzBKTUI0REVBQUl6cHVSbnVCQUFBQWowYkFFNEJBR0FzNTh4dUp3QUFFRWdBQUVDZ3N3TEFZd0FBR01PNU05c0pBQUFFT2pzQW5BSUFRRzFyWnJVVEFBQUl0Q29BbkFJQVFFMXJaN1FUQUFBSXREb0FuQUlBUUMyWHpHWW5BQUFRNktJQWNBb0FBRFZjT3BPZEFBQkFvSXNEd0NrQUFQUjF6U3krNmdSQUJBQkFIOWZPWUk4QUFDRFExUUhnRkFBQTlyWEY3SFVDQUFDQk5na0Fwd0FBc0krdFp1NW1Kd0FpQUFEYTJuTFdlZ1FBQUlFMkRRQ25BQURReHRZemR2TVRBQkVBQU50cU1WdWJQQUlRQVFDd2pWWXoxWGNBQUNCUXN3QndDZ0FBMTJrNVM1dWVBSWdBQUxoTTZ4bmEvQkdBQ0FDQWRmYVluYjREQUFDQmRna0Fwd0FBY0o2OVp1WnVKd0FpQUFDZXR1ZXMzUFVSZ0FnQWdOUDJucEc3ZndkQUJBREFYVDFtWTVjdkFZb0FBTGpWYXlaMisxOEFJZ0NBZEQxbllkZi9CaWdDQUVqVmV3WjIvejBBdlJjQUFQWldZZloxRDRCbHFiRVFBTENIS2pPdlJBQXNTNTBGQVlCV0tzMjZNZ0d3TExVV0JnQzJWRzNHbFFxQVphbTNRQUJ3cllxenJWd0FMRXZOaFFLQVMxU2RhU1VEWUZucUxoZ0FuS3Z5TENzYkFNdFNlK0VBNENuVloxanBBRmlXK2dzSUFQZU5NTHZLWCtDeEQ2OWUvK2g5RFFEd21CRUcvMEg1RTRCakl5MHNBRmxHbTFGREJjQ3lqTGZBQU14dnhOazAzQVVmODBnQWdKNUdIUHdIdzUwQUhCdDU0UUVZMitnemFPZ0FXSmJ4M3dBQXhqUEQ3Qm4rQlJ6elNBQ0FsbVlZL0FmRG53QWNtK21OQWFDVzJXYk1WQy9tbU5NQUFMWXcyK0EvbVBKRkhSTUNBRnhpMXNGL01OVWpnRk5tZndNQjJGN0M3SmorQlI1ekdnREFVeElHLzBITUN6MG1CQUE0bGpUNEQrSmU4REVoQUpBdGNmQWZ4TDd3WTBJQUlFdnk0RCtJWDRCalFnQmdiZ2IvWHl6RUk4UUF3QndNL2RNc3lqT0VBTUNZRFA2bldad1Z4QUJBYlliKytTelVoY1FBUUEyRy9tVXMyZ2JFQU1DK0RQM3JXY0FHQkFIQXRnejg3Vm5RSFFnQ2dIVU0vUFlzY0NlaUFPQ1dZZCtIUlM5S0lBQ3pNT0JyK2ovY2xVajNhV2lwMEFBQUFBQkpSVTVFcmtKZ2dnPT0iLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIiwicHVycG9zZSI6ImFueSJ9XX0=">
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="topbar">
+      <div class="brand" id="brandLabel">말씀나눔 성경읽기</div>
+      <select class="version-select" id="versionSelect" style="display:none;"></select>
+      <button class="btn btn-ghost" id="installBtn" style="display:none; padding:5px 10px; font-size:12px; white-space:nowrap;">📲 설치</button>
+      <button class="icon-btn" id="menuBtn" title="설정" style="display:none;">⋯</button>
+    </div>
+    <div class="inapp-banner" id="inappBanner" style="display:none;"></div>
+    <div class="crumbs" id="crumbs" style="display:none;"></div>
+    <div class="update-banner" id="updateBanner" style="display:none;">
+      <span>✨ 새 버전이 있어요</span>
+      <button class="btn btn-primary" id="updateBtn" style="padding:5px 12px; font-size:12px;">지금 업데이트</button>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ---------- 66권 성경 메타데이터 ---------- */
+var BOOKS = [
+{n:1,ko:"창세기",en:"Genesis"},{n:2,ko:"출애굽기",en:"Exodus"},{n:3,ko:"레위기",en:"Leviticus"},
+{n:4,ko:"민수기",en:"Numbers"},{n:5,ko:"신명기",en:"Deuteronomy"},{n:6,ko:"여호수아",en:"Joshua"},
+{n:7,ko:"사사기",en:"Judges"},{n:8,ko:"룻기",en:"Ruth"},{n:9,ko:"사무엘상",en:"1 Samuel"},
+{n:10,ko:"사무엘하",en:"2 Samuel"},{n:11,ko:"열왕기상",en:"1 Kings"},{n:12,ko:"열왕기하",en:"2 Kings"},
+{n:13,ko:"역대상",en:"1 Chronicles"},{n:14,ko:"역대하",en:"2 Chronicles"},{n:15,ko:"에스라",en:"Ezra"},
+{n:16,ko:"느헤미야",en:"Nehemiah"},{n:17,ko:"에스더",en:"Esther"},{n:18,ko:"욥기",en:"Job"},
+{n:19,ko:"시편",en:"Psalms"},{n:20,ko:"잠언",en:"Proverbs"},{n:21,ko:"전도서",en:"Ecclesiastes"},
+{n:22,ko:"아가",en:"Song of Solomon"},{n:23,ko:"이사야",en:"Isaiah"},{n:24,ko:"예레미야",en:"Jeremiah"},
+{n:25,ko:"예레미야애가",en:"Lamentations"},{n:26,ko:"에스겔",en:"Ezekiel"},{n:27,ko:"다니엘",en:"Daniel"},
+{n:28,ko:"호세아",en:"Hosea"},{n:29,ko:"요엘",en:"Joel"},{n:30,ko:"아모스",en:"Amos"},
+{n:31,ko:"오바댜",en:"Obadiah"},{n:32,ko:"요나",en:"Jonah"},{n:33,ko:"미가",en:"Micah"},
+{n:34,ko:"나훔",en:"Nahum"},{n:35,ko:"하박국",en:"Habakkuk"},{n:36,ko:"스바냐",en:"Zephaniah"},
+{n:37,ko:"학개",en:"Haggai"},{n:38,ko:"스가랴",en:"Zechariah"},{n:39,ko:"말라기",en:"Malachi"},
+{n:40,ko:"마태복음",en:"Matthew"},{n:41,ko:"마가복음",en:"Mark"},{n:42,ko:"누가복음",en:"Luke"},
+{n:43,ko:"요한복음",en:"John"},{n:44,ko:"사도행전",en:"Acts"},{n:45,ko:"로마서",en:"Romans"},
+{n:46,ko:"고린도전서",en:"1 Corinthians"},{n:47,ko:"고린도후서",en:"2 Corinthians"},{n:48,ko:"갈라디아서",en:"Galatians"},
+{n:49,ko:"에베소서",en:"Ephesians"},{n:50,ko:"빌립보서",en:"Philippians"},{n:51,ko:"골로새서",en:"Colossians"},
+{n:52,ko:"데살로니가전서",en:"1 Thessalonians"},{n:53,ko:"데살로니가후서",en:"2 Thessalonians"},{n:54,ko:"디모데전서",en:"1 Timothy"},
+{n:55,ko:"디모데후서",en:"2 Timothy"},{n:56,ko:"디도서",en:"Titus"},{n:57,ko:"빌레몬서",en:"Philemon"},
+{n:58,ko:"히브리서",en:"Hebrews"},{n:59,ko:"야고보서",en:"James"},{n:60,ko:"베드로전서",en:"1 Peter"},
+{n:61,ko:"베드로후서",en:"2 Peter"},{n:62,ko:"요한일서",en:"1 John"},{n:63,ko:"요한이서",en:"2 John"},
+{n:64,ko:"요한삼서",en:"3 John"},{n:65,ko:"유다서",en:"Jude"},{n:66,ko:"요한계시록",en:"Revelation"}
+];
+function pad2(n){ return n<10 ? "0"+n : ""+n; }
+BOOKS.forEach(function(b){ b.code = pad2(b.n); });
+function bookByNum(n){ return BOOKS.find(function(b){ return b.n===Number(n); }); }
+
+/* 알려진 버전 라벨(추정 가능한 것만; 나머지는 파일명을 그대로 사용) */
+var KNOWN_LABELS = {
+  "korhrv":"개역한글","kornkrv":"개역개정","engesv":"ESV","enggnt":"GNT(Good News)",
+  "engniv":"NIV","engnasb":"NASB","engmsg":"The Message","engnkjv":"NKJV","engkjv":"KJV",
+  "enghcsb":"HCSB","engcev":"CEV","engisv":"ISV","engnlt":"NLT","engnrsv":"NRSV","engtniv":"TNIV"
+};
+var AUDIO_VERSION_HINT = "kornkrv"; /* 오디오는 개역개정 낭독 */
+
+/* ---------- 로컬 저장 ---------- */
+var LS_READ = "bible_read_v1";
+var LS_LABELS = "bible_labels_v1";
+var LS_LASTPOS = "bible_lastpos_v1";
+function lsGet(key, fallback){
+  try{ var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; }
+}
+function lsSet(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+}
+var readMap = lsGet(LS_READ, {});
+var labelMap = lsGet(LS_LABELS, {});
+function readKey(bookNum, chapter){ return pad2(bookNum)+"_"+chapter; }
+function isRead(bookNum, chapter){ return !!readMap[readKey(bookNum,chapter)]; }
+function markRead(bookNum, chapter, val){
+  var k = readKey(bookNum,chapter);
+  if(val) readMap[k] = true; else delete readMap[k];
+  lsSet(LS_READ, readMap);
+}
+function bookReadCount(bookNum, totalChapters){
+  var c=0;
+  for(var i=1;i<=totalChapters;i++){ if(isRead(bookNum,i)) c++; }
+  return c;
+}
+
+/* ---------- 앱 상태 ---------- */
+var state = {
+  connected:false,
+  lfaFiles:{},      /* filenameLower(without ext) -> File */
+  mp3Files:{},      /* "01_1.mp3" -> File */
+  zipCache:{},       /* versionKey -> JSZip instance (loaded) */
+  chapterCache:{},    /* versionKey|bookNum|chapter -> [verseText,...] */
+  chapterCounts:{},   /* versionKey|bookNum -> chapter count (from zip entries) */
+  version:null,       /* current selected version key */
+  screen:"connect",   /* connect | letters | books | chapters | verses | reading */
+  letter:null,
+  book:null,
+  chapter:null,
+  targetVerse:null,
+  audioObjUrl:null
+};
+
+/* ---------- DOM helpers ---------- */
+var $main = document.getElementById("main");
+var $crumbs = document.getElementById("crumbs");
+var $versionSelect = document.getElementById("versionSelect");
+var $menuBtn = document.getElementById("menuBtn");
+var $brand = document.getElementById("brandLabel");
+var $installBtn = document.getElementById("installBtn");
+var $inappBanner = document.getElementById("inappBanner");
+
+/* ---------- 실행 환경 감지: 카카오톡 등 인앱 브라우저에서는 홈 화면 설치가 막혀 있음 ---------- */
+function detectEnv(){
+  var ua = navigator.userAgent || "";
+  var isIOS = /iPhone|iPad|iPod/.test(ua) && !window.MSStream;
+  var isAndroid = /Android/.test(ua);
+  var inAppName = null;
+  if(/KAKAOTALK/i.test(ua)) inAppName = "카카오톡";
+  else if(/FBAN|FBAV|FB_IAB/i.test(ua)) inAppName = "페이스북";
+  else if(/Instagram/i.test(ua)) inAppName = "인스타그램";
+  else if(/\bLine\//i.test(ua)) inAppName = "라인";
+  else if(/NAVER\(inapp/i.test(ua)) inAppName = "네이버";
+  else if(/\bBAND\//i.test(ua)) inAppName = "밴드";
+  else if(/DaumApps|DaumDevice/i.test(ua)) inAppName = "다음";
+  var isStandalone = (window.navigator.standalone === true) ||
+    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  return {ua:ua, isIOS:isIOS, isAndroid:isAndroid, inAppName:inAppName, isInApp:!!inAppName, isStandalone:isStandalone};
+}
+var ENV = detectEnv();
+
+function openInChrome(){
+  var target = location.href.replace(/^https?:\/\//, "");
+  var scheme = location.protocol === "https:" ? "https" : "http";
+  location.href = "intent://" + target + "#Intent;scheme=" + scheme + ";package=com.android.chrome;end";
+}
+
+function renderInappBanner(){
+  if(!ENV.isInApp || ENV.isStandalone){ $inappBanner.style.display = "none"; return; }
+  clear($inappBanner);
+  $inappBanner.style.display = "flex";
+  $inappBanner.appendChild(el("div",{class:"title"},["⚠️ " + ENV.inAppName + " 안에서 열려 있어요"]));
+  if(ENV.isAndroid){
+    $inappBanner.appendChild(el("div",{},[
+      ENV.inAppName + " 안에서는 홈 화면 설치가 되지 않아요. 아래 버튼을 눌러 Chrome으로 열어주세요."
+    ]));
+    $inappBanner.appendChild(el("button",{class:"btn btn-primary", onclick:openInChrome},["Chrome으로 열기"]));
+  } else if(ENV.isIOS){
+    $inappBanner.appendChild(el("div",{},[
+      ENV.inAppName + " 안에서는 홈 화면 설치가 되지 않아요. 화면 아래(또는 오른쪽 위) ",
+      el("b",{},["공유 아이콘"]), " 또는 ", el("b",{},["'···' 메뉴"]),
+      "에서 ", el("b",{},["'Safari로 열기'"]), "를 선택한 다음, Safari에서 다시 설치해주세요."
+    ]));
+  } else {
+    $inappBanner.appendChild(el("div",{},[ENV.inAppName + " 안에서는 홈 화면 설치가 되지 않아요. 기본 브라우저(Chrome/Safari)에서 링크를 열어주세요."]));
+  }
+}
+
+/* ---------- 홈 화면에 추가(설치) 버튼 ---------- */
+var deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", function(e){
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if(!ENV.isInApp && !ENV.isStandalone && $installBtn) $installBtn.style.display = "inline-flex";
+});
+window.addEventListener("appinstalled", function(){
+  deferredInstallPrompt = null;
+  if($installBtn) $installBtn.style.display = "none";
+});
+function openInstallGuideModal(){
+  var backdrop = el("div",{class:"modal-backdrop", onclick:function(e){ if(e.target===backdrop) backdrop.remove(); }});
+  var sheet = el("div",{class:"modal-sheet"});
+  sheet.appendChild(el("h3",{},["📲 홈 화면에 앱 아이콘 추가하기"]));
+  if(ENV.isIOS){
+    sheet.appendChild(el("div",{class:"setup-steps"},[
+      el("div",{},[el("b",{},["1."])," 화면 아래쪽의 ", el("b",{},["공유 아이콘"]), "(네모에 위쪽 화살표)을 누르세요"]),
+      el("div",{},[el("b",{},["2."])," 아래로 내려서 ", el("b",{},["'홈 화면에 추가'"]), "를 누르세요"]),
+      el("div",{},[el("b",{},["3."])," 오른쪽 위 ", el("b",{},["'추가'"]), "를 누르면 완료!"])
+    ]));
+  } else {
+    sheet.appendChild(el("div",{class:"setup-steps"},[
+      el("div",{},[el("b",{},["1."])," 오른쪽 위 ", el("b",{},["'⋮' 메뉴"]), "를 누르세요"]),
+      el("div",{},[el("b",{},["2."])," ", el("b",{},["'앱 설치'"]), " 또는 ", el("b",{},["'홈 화면에 추가'"]), "를 누르세요"]),
+      el("div",{},[el("b",{},["3."])," 안내에 따라 확인을 누르면 완료!"])
+    ]));
+  }
+  var closeBtn = el("button",{class:"btn btn-ghost", style:"margin-top:10px; width:100%;", onclick:function(){ backdrop.remove(); }},["닫기"]);
+  sheet.appendChild(closeBtn);
+  backdrop.appendChild(sheet);
+  document.body.appendChild(backdrop);
+}
+async function onInstallClick(){
+  if(deferredInstallPrompt){
+    try{
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+    }catch(e){ /* 무시 */ }
+    deferredInstallPrompt = null;
+    $installBtn.style.display = "none";
+    return;
+  }
+  openInstallGuideModal();
+}
+if($installBtn) $installBtn.addEventListener("click", onInstallClick);
+
+function el(tag, attrs, children){
+  var e = document.createElement(tag);
+  if(attrs) for(var k in attrs){
+    if(k==="class") e.className = attrs[k];
+    else if(k==="html") e.innerHTML = attrs[k];
+    else if(k.indexOf("on")===0) e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  (children||[]).forEach(function(c){ if(c) e.appendChild(typeof c==="string" ? document.createTextNode(c) : c); });
+  return e;
+}
+function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); }
+
+/* ---------- 폴더 연결 ---------- */
+var supportsFSAccess = (typeof window.showDirectoryPicker === "function");
+
+function labelForFile(filenameNoExt){
+  var lower = filenameNoExt.toLowerCase();
+  if(labelMap[lower]) return labelMap[lower];
+  if(KNOWN_LABELS[lower]) return KNOWN_LABELS[lower];
+  return filenameNoExt;
+}
+
+function indexFilesFromList(fileList){
+  /* fileList: array of {name, relPath, file} where relPath is like "bible/korhrv.lfa" or "bible/MP3/01_1.mp3" */
+  var lfa = {}, mp3 = {};
+  fileList.forEach(function(item){
+    var rel = item.relPath.replace(/\\/g,"/");
+    var parts = rel.split("/").filter(Boolean);
+    /* 루트 폴더명을 제거: 첫 세그먼트가 폴더명이면 스킵 */
+    if(parts.length >= 2){
+      var inner = parts.slice(1); /* remove top folder name */
+      if(inner.length === 1){
+        var fname = inner[0];
+        if(/\.lfa$/i.test(fname)){
+          var key = fname.replace(/\.lfa$/i,"");
+          if(!(key.toLowerCase() in lfa)) lfa[key.toLowerCase()] = {displayName:key, file:item.file};
+        }
+      } else if(inner.length === 2 && /^mp3$/i.test(inner[0]) && /\.mp3$/i.test(inner[1])){
+        mp3[inner[1].toLowerCase()] = item.file;
+      }
+    }
+  });
+  return {lfa:lfa, mp3:mp3};
+}
+
+async function scanDirectoryHandle(dirHandle){
+  var files = [];
+  async function walk(handle, path){
+    for await (var entry of handle.values()){
+      var entryPath = path + "/" + entry.name;
+      if(entry.kind === "file"){
+        var f = await entry.getFile();
+        files.push({name:entry.name, relPath:entryPath, file:f});
+      } else if(entry.kind === "directory"){
+        await walk(entry, entryPath);
+      }
+    }
+  }
+  await walk(dirHandle, dirHandle.name);
+  return files;
+}
+
+function scanFileInputList(fileListRaw){
+  var files = [];
+  for(var i=0;i<fileListRaw.length;i++){
+    var f = fileListRaw[i];
+    var rel = f.webkitRelativePath || f.name;
+    files.push({name:f.name, relPath:rel, file:f});
+  }
+  return files;
+}
+
+var IDB_NAME = "bible_app_db", IDB_STORE = "handles";
+function idbSet(key, val){
+  return new Promise(function(resolve){
+    try{
+      var req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = function(){ req.result.createObjectStore(IDB_STORE); };
+      req.onsuccess = function(){
+        var db = req.result;
+        var tx = db.transaction(IDB_STORE,"readwrite");
+        tx.objectStore(IDB_STORE).put(val, key);
+        tx.oncomplete = function(){ resolve(true); };
+        tx.onerror = function(){ resolve(false); };
+      };
+      req.onerror = function(){ resolve(false); };
+    }catch(e){ resolve(false); }
+  });
+}
+function idbGet(key){
+  return new Promise(function(resolve){
+    try{
+      var req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = function(){ req.result.createObjectStore(IDB_STORE); };
+      req.onsuccess = function(){
+        var db = req.result;
+        var tx = db.transaction(IDB_STORE,"readonly");
+        var getReq = tx.objectStore(IDB_STORE).get(key);
+        getReq.onsuccess = function(){ resolve(getReq.result || null); };
+        getReq.onerror = function(){ resolve(null); };
+      };
+      req.onerror = function(){ resolve(null); };
+    }catch(e){ resolve(null); }
+  });
+}
+
+async function connectViaPicker(){
+  if(!supportsFSAccess) throw new Error("unsupported");
+  var handle = await window.showDirectoryPicker({ id:"bible-folder", mode:"read" });
+  var files = await scanDirectoryHandle(handle);
+  await idbSet("dirHandle", handle);
+  return files;
+}
+
+function connectViaInput(){
+  return new Promise(function(resolve, reject){
+    var input = document.createElement("input");
+    input.type = "file";
+    input.webkitdirectory = true;
+    input.directory = true;
+    input.multiple = true;
+    input.style.display = "none";
+    document.body.appendChild(input);
+    input.addEventListener("change", function(){
+      if(input.files && input.files.length){
+        resolve(scanFileInputList(input.files));
+      } else {
+        reject(new Error("no-selection"));
+      }
+      document.body.removeChild(input);
+    });
+    input.click();
+  });
+}
+
+/* 브라우저 권한 재확인(requestPermission)은 반드시 사용자의 클릭(제스처) 안에서 호출해야 통과된다.
+   그래서 부팅 시점에는 조용히 확인만(queryPermission) 하고, 권한이 사라졌으면
+   "다시 연결하기" 버튼을 눌렀을 때 같은 폴더 핸들로 재요청한다 (새로 폴더를 고를 필요 없음). */
+async function silentRestoreConnection(){
+  if(!supportsFSAccess) return {status:"unsupported"};
+  try{
+    var handle = await idbGet("dirHandle");
+    if(!handle) return {status:"none"};
+    var perm = await handle.queryPermission({mode:"read"});
+    if(perm === "granted"){
+      var files = await scanDirectoryHandle(handle);
+      return {status:"granted", files:files};
+    }
+    return {status:"needs-permission", handle:handle};
+  }catch(e){ return {status:"none"}; }
+}
+
+async function reRequestPermission(handle){
+  var perm = await handle.requestPermission({mode:"read"});
+  if(perm !== "granted") throw new Error("permission-denied");
+  return await scanDirectoryHandle(handle);
+}
+
+function applyScannedFiles(rawFiles){
+  var idx = indexFilesFromList(rawFiles);
+  state.lfaFiles = idx.lfa;
+  state.mp3Files = idx.mp3;
+  state.connected = Object.keys(idx.lfa).length > 0;
+  return state.connected;
+}
+
+/* ---------- 성경 데이터 파싱 (JSZip) ---------- */
+async function getZip(versionKey){
+  if(state.zipCache[versionKey]) return state.zipCache[versionKey];
+  var entry = state.lfaFiles[versionKey];
+  if(!entry) throw new Error("version-not-found");
+  var buf = await entry.file.arrayBuffer();
+  var zip = await JSZip.loadAsync(buf);
+  state.zipCache[versionKey] = zip;
+  return zip;
+}
+
+var LFB_RE = /^\S+\s+(\d+):(\d+)\s+(.*)$/;
+
+function findChapterEntry(zip, bookCode, chapter){
+  var suffix = bookCode + "_" + chapter + ".lfb";
+  var names = Object.keys(zip.files);
+  for(var i=0;i<names.length;i++){
+    if(names[i].toLowerCase().endsWith(suffix.toLowerCase())) return zip.files[names[i]];
+  }
+  return null;
+}
+
+async function getChapterVerses(versionKey, bookNum, chapter){
+  var cacheKey = versionKey+"|"+bookNum+"|"+chapter;
+  if(state.chapterCache[cacheKey]) return state.chapterCache[cacheKey];
+  var zip = await getZip(versionKey);
+  var book = bookByNum(bookNum);
+  var entry = findChapterEntry(zip, book.code, chapter);
+  if(!entry) return null;
+  var text = await entry.async("text");
+  var lines = text.split(/\r?\n/);
+  var verses = [];
+  lines.forEach(function(line){
+    if(!line.trim()) return;
+    var m = LFB_RE.exec(line.trim());
+    if(m) verses.push({v:Number(m[2]), text:m[3].replace(/^"|"$/g,"").trim()});
+  });
+  verses.sort(function(a,b){ return a.v-b.v; });
+  state.chapterCache[cacheKey] = verses;
+  return verses;
+}
+
+async function getChapterCount(versionKey, bookNum){
+  var cacheKey = versionKey+"|"+bookNum;
+  if(state.chapterCounts[cacheKey]) return state.chapterCounts[cacheKey];
+  var zip = await getZip(versionKey);
+  var book = bookByNum(bookNum);
+  var re = new RegExp(book.code + "_(\\d+)\\.lfb$", "i");
+  var max = 0;
+  Object.keys(zip.files).forEach(function(name){
+    var m = re.exec(name);
+    if(m) max = Math.max(max, Number(m[1]));
+  });
+  state.chapterCounts[cacheKey] = max;
+  return max;
+}
+
+function getAudioFile(bookNum, chapter){
+  var key = pad2(bookNum) + "_" + chapter + ".mp3";
+  return state.mp3Files[key] || null;
+}
+
+/* ---------- 화면 렌더링 ---------- */
+function updateCrumbs(){
+  clear($crumbs);
+  if(state.screen === "connect"){ $crumbs.style.display="none"; return; }
+  $crumbs.style.display = "flex";
+  var parts = [];
+  parts.push(el("span",{class:"clickable", onclick:function(){ goLetters(); }},["전체"]));
+  if(state.book){
+    var b = bookByNum(state.book);
+    parts.push(el("span",{},["›"]));
+    if(state.chapter){
+      parts.push(el("span",{class:"clickable", onclick:function(){ goChapters(state.book); }},[b.ko]));
+      parts.push(el("span",{},["›"]));
+      if(state.screen === "reading"){
+        parts.push(el("span",{class:"clickable", onclick:function(){ goVerses(state.book,state.chapter); }},[state.chapter+"장"]));
+        parts.push(el("span",{},["›"]));
+        parts.push(el("span",{},[state.targetVerse ? (state.targetVerse+"절") : "전체"]));
+      } else {
+        parts.push(el("span",{},[state.chapter+"장"]));
+      }
+    } else {
+      parts.push(el("span",{},[b.ko]));
+    }
+  }
+  parts.forEach(function(p){ $crumbs.appendChild(p); });
+}
+
+function updateHeaderForConnected(){
+  $menuBtn.style.display = "flex";
+  $versionSelect.style.display = "inline-block";
+  clear($versionSelect);
+  var keys = Object.keys(state.lfaFiles).sort();
+  /* kornkrv를 기본 상단에 */
+  keys.sort(function(a,b){
+    if(a===AUDIO_VERSION_HINT) return -1;
+    if(b===AUDIO_VERSION_HINT) return 1;
+    return 0;
+  });
+  keys.forEach(function(k){
+    var opt = el("option",{value:k},[labelForFile(state.lfaFiles[k].displayName)]);
+    $versionSelect.appendChild(opt);
+  });
+  if(state.version && keys.indexOf(state.version)>=0) $versionSelect.value = state.version;
+  else if(keys.length){ state.version = keys[0]; $versionSelect.value = state.version; }
+  $brand.textContent = "말씀나눔 성경읽기";
+}
+
+$versionSelect.addEventListener("change", function(){
+  state.version = $versionSelect.value;
+  render();
+});
+$menuBtn.addEventListener("click", openSettingsModal);
+
+function goConnectScreen(){
+  state.screen = "connect"; state.book=null; state.chapter=null;
+  $menuBtn.style.display="none"; $versionSelect.style.display="none";
+  render();
+}
+function goLetters(){ state.screen="letters"; state.book=null; state.chapter=null; render(); }
+function goChapters(bookNum){ state.screen="chapters"; state.book=bookNum; state.chapter=null; state.targetVerse=null; render(); }
+function goVerses(bookNum, chapter){ state.screen="verses"; state.book=bookNum; state.chapter=chapter; state.targetVerse=null; render(); }
+function goReading(bookNum, chapter, targetVerse){
+  state.screen="reading"; state.book=bookNum; state.chapter=chapter; state.targetVerse = targetVerse || null;
+  lsSet(LS_LASTPOS, {book:bookNum, chapter:chapter, version:state.version});
+  render();
+}
+
+function render(){
+  clear($main);
+  updateCrumbs();
+  if(state.screen === "connect") return renderConnect();
+  if(state.screen === "letters") return renderLetters();
+  if(state.screen === "chapters") return renderChapters();
+  if(state.screen === "verses") return renderVerses();
+  if(state.screen === "reading") return renderReading();
+}
+
+function renderConnect(){
+  var wrap = el("div",{class:"center-pane"});
+  var reconnecting = !!state._pendingReconnectHandle;
+  wrap.appendChild(el("h1",{},["📖 성경읽기 폴더 연결"]));
+  if(reconnecting){
+    wrap.appendChild(el("p",{},["이전에 연결하셨던 ", el("b",{},["bible"]), " 폴더가 있어요. 아래 버튼을 누르면 새로 고르지 않고 바로 다시 연결됩니다."]));
+    var btn1 = el("button",{class:"btn btn-primary", style:"padding:12px 22px;font-size:14px;", onclick:onReconnectClick},["🔓 이전 폴더 다시 연결하기"]);
+    wrap.appendChild(btn1);
+    wrap.appendChild(el("button",{class:"btn btn-ghost", style:"font-size:12.5px; margin-top:4px;", onclick:onConnectClick},["다른 폴더 새로 선택"]));
+  } else {
+    wrap.appendChild(el("p",{},["스마트폰이나 컴퓨터에 준비한 ", el("b",{},["bible"]), " 폴더를 연결하면, 서버 없이 그 안의 성경 데이터와 오디오로 바로 읽기를 시작합니다."]));
+    var steps = el("div",{class:"setup-steps"},[
+      el("div",{},[el("b",{},["1."])," bible 폴더 안에 .lfa 성경 파일들을 넣습니다"]),
+      el("div",{},[el("b",{},["2."])," bible 폴더 안에 MP3 폴더(오디오)를 넣습니다"]),
+      el("div",{},[el("b",{},["3."])," 아래 버튼으로 bible 폴더를 선택하세요"])
+    ]);
+    wrap.appendChild(steps);
+    var btn = el("button",{class:"btn btn-primary", style:"padding:12px 22px;font-size:14px;", onclick:onConnectClick},["📁 bible 폴더 연결하기"]);
+    wrap.appendChild(btn);
+    if(supportsFSAccess){
+      wrap.appendChild(el("p",{style:"font-size:11.5px; color:var(--text-dim); max-width:320px;"},["이 브라우저에서는 한 번 연결하면 계속 유지돼요. 다음에 열 때는 버튼 한 번만 눌러 다시 연결하면 됩니다."]));
+    }
+  }
+  var errBox = el("div",{class:"error-box", id:"connectError", style:"display:none;"});
+  wrap.appendChild(errBox);
+  $main.appendChild(wrap);
+}
+
+async function onConnectClick(){
+  var errBox = document.getElementById("connectError");
+  errBox.style.display = "none";
+  try{
+    var files;
+    if(supportsFSAccess){
+      try{ files = await connectViaPicker(); }
+      catch(e){
+        if(e && e.name === "AbortError") return;
+        files = await connectViaInput();
+      }
+    } else {
+      files = await connectViaInput();
+    }
+    var ok = applyScannedFiles(files);
+    if(!ok){
+      errBox.textContent = "bible 폴더 안에서 .lfa 파일을 찾지 못했어요. 폴더 구조를 확인해주세요.";
+      errBox.style.display = "block";
+      return;
+    }
+    state._pendingReconnectHandle = null;
+    updateHeaderForConnected();
+    goLetters();
+  }catch(e){
+    if(e && e.message === "no-selection") return;
+    errBox.textContent = "폴더를 연결하는 중 문제가 발생했어요: " + (e && e.message ? e.message : e);
+    errBox.style.display = "block";
+  }
+}
+
+async function onReconnectClick(){
+  var errBox = document.getElementById("connectError");
+  errBox.style.display = "none";
+  try{
+    var files = await reRequestPermission(state._pendingReconnectHandle);
+    var ok = applyScannedFiles(files);
+    if(!ok){
+      errBox.textContent = "bible 폴더 안에서 .lfa 파일을 찾지 못했어요. 폴더 구조를 확인해주세요.";
+      errBox.style.display = "block";
+      return;
+    }
+    state._pendingReconnectHandle = null;
+    updateHeaderForConnected();
+    goLetters();
+  }catch(e){
+    errBox.textContent = "권한이 거절되었어요. '다른 폴더 새로 선택'을 눌러 다시 골라주세요.";
+    errBox.style.display = "block";
+  }
+}
+
+function renderLetters(){
+  /* 구약(1~39권) / 신약(40~66권)으로 나누어 66권 전체를 빠짐없이 보여준다 */
+  var wrap = el("div",{});
+  var OT = BOOKS.filter(function(b){ return b.n <= 39; });
+  var NT = BOOKS.filter(function(b){ return b.n >= 40; });
+
+  function renderSection(title, count, books){
+    wrap.appendChild(el("div",{class:"section-title"},[title + " · " + count + "권"]));
+    var list = el("div",{class:"book-list"});
+    books.forEach(function(b){
+      var row = el("div",{class:"book-row", onclick:function(){ goChapters(b.n); }});
+      row.appendChild(el("div",{},[
+        el("div",{class:"name"},[b.n + ". " + b.ko]),
+        el("div",{class:"sub"},[b.en])
+      ]));
+      var pill = el("div",{class:"progress", id:"prog-"+b.n},["…"]);
+      row.appendChild(pill);
+      list.appendChild(row);
+      getChapterCount(state.version, b.n).then(function(total){
+        var read = bookReadCount(b.n, total);
+        var p = document.getElementById("prog-"+b.n);
+        if(p) p.textContent = read + " / " + total + "장";
+      });
+    });
+    wrap.appendChild(list);
+  }
+
+  renderSection("구약", OT.length, OT);
+  renderSection("신약", NT.length, NT);
+  $main.appendChild(wrap);
+}
+
+function renderChapters(){
+  var book = bookByNum(state.book);
+  var wrap = el("div",{});
+  wrap.appendChild(el("div",{class:"section-title"},[book.ko + " (" + book.en + ") — 장을 선택하세요"]));
+  var grid = el("div",{class:"chapter-grid", id:"chapterGrid"});
+  grid.appendChild(el("div",{class:"empty-hint"},["불러오는 중…"]));
+  wrap.appendChild(grid);
+  $main.appendChild(wrap);
+  getChapterCount(state.version, state.book).then(function(total){
+    clear(grid);
+    if(!total){
+      grid.appendChild(el("div",{class:"empty-hint"},["이 버전에서 해당 책 데이터를 찾을 수 없어요."]));
+      return;
+    }
+    for(var c=1;c<=total;c++){
+      (function(c){
+        var readCls = isRead(state.book,c) ? " read" : "";
+        grid.appendChild(el("button",{class:"chapter-btn"+readCls, onclick:function(){ goVerses(state.book,c); }},[String(c)]));
+      })(c);
+    }
+  });
+}
+
+function renderVerses(){
+  var book = bookByNum(state.book);
+  var wrap = el("div",{});
+  var headRow = el("div",{class:"row", style:"justify-content:space-between; margin-bottom:4px;"},[
+    el("div",{class:"section-title", style:"margin:0;"},[book.ko + " " + state.chapter + "장 — 절을 선택하세요"]),
+    el("button",{class:"btn btn-ghost", style:"font-size:12px; padding:6px 10px;", onclick:function(){ goReading(state.book,state.chapter); }},["전체 읽기 ›"])
+  ]);
+  wrap.appendChild(headRow);
+  var grid = el("div",{class:"verse-grid", id:"verseGrid", style:"margin-top:10px;"});
+  grid.appendChild(el("div",{class:"empty-hint"},["불러오는 중…"]));
+  wrap.appendChild(grid);
+  $main.appendChild(wrap);
+  getChapterVerses(state.version, state.book, state.chapter).then(function(verses){
+    clear(grid);
+    if(!verses || !verses.length){
+      grid.appendChild(el("div",{class:"empty-hint"},["이 버전에는 해당 장 데이터가 없어요."]));
+      return;
+    }
+    verses.forEach(function(v){
+      grid.appendChild(el("button",{class:"verse-btn", onclick:function(){ goReading(state.book,state.chapter,v.v); }},[String(v.v)]));
+    });
+  });
+}
+
+function renderReading(){
+  var book = bookByNum(state.book);
+  var wrap = el("div",{});
+  var head = el("div",{class:"row", style:"justify-content:space-between; margin-bottom:10px;"},[
+    el("div",{style:"font-weight:700; font-size:16px;"},[book.ko + " " + state.chapter + "장" + (state.targetVerse ? (" " + state.targetVerse + "절") : "")]),
+    el("label",{class:"row", style:"font-size:12.5px; color:var(--text-dim); gap:6px; cursor:pointer;"},[
+      (function(){
+        var cb = el("input",{type:"checkbox"});
+        cb.checked = isRead(state.book, state.chapter);
+        cb.addEventListener("change", function(){
+          markRead(state.book, state.chapter, cb.checked);
+        });
+        return cb;
+      })(),
+      "읽음으로 표시"
+    ])
+  ]);
+  wrap.appendChild(head);
+  var verseWrap = el("div",{class:"verse-view", id:"verseWrap"},[el("div",{class:"empty-hint"},["불러오는 중…"])]);
+  wrap.appendChild(verseWrap);
+  $main.appendChild(wrap);
+
+  getChapterVerses(state.version, state.book, state.chapter).then(function(verses){
+    clear(verseWrap);
+    if(!verses || !verses.length){
+      verseWrap.appendChild(el("div",{class:"empty-hint"},["이 버전에는 해당 장 데이터가 없어요."]));
+      return;
+    }
+    verses.forEach(function(v){
+      var isTarget = state.targetVerse && v.v === state.targetVerse;
+      var row = el("div",{class:"verse-row"+(isTarget?" highlight":"")},[
+        el("div",{class:"verse-num"},[String(v.v)]),
+        el("div",{class:"verse-text"},[v.text])
+      ]);
+      if(isTarget) row.id = "targetVerseRow";
+      verseWrap.appendChild(row);
+    });
+    /* 장을 읽으면 자동으로 읽음 표시 */
+    if(!isRead(state.book, state.chapter)){
+      markRead(state.book, state.chapter, true);
+      var cb = wrap.querySelector('input[type="checkbox"]');
+      if(cb) cb.checked = true;
+    }
+    if(state.targetVerse){
+      var targetEl = document.getElementById("targetVerseRow");
+      if(targetEl) targetEl.scrollIntoView({block:"center"});
+    }
+  });
+
+  /* 하단 바: 오디오 + 이전/다음 장 */
+  var audioFile = getAudioFile(state.book, state.chapter);
+  var shouldAutoplay = !!state._pendingAutoplay;
+  state._pendingAutoplay = false;
+  if(audioFile){
+    if(state.audioObjUrl) URL.revokeObjectURL(state.audioObjUrl);
+    state.audioObjUrl = URL.createObjectURL(audioFile);
+    var bar = el("div",{class:"audio-bar"});
+    bar.appendChild(el("span",{style:"font-size:18px;"},["🔊"]));
+    var audioAttrs = {controls:"controls", src:state.audioObjUrl};
+    if(shouldAutoplay) audioAttrs.autoplay = "autoplay";
+    var audio = el("audio", audioAttrs);
+    audio.addEventListener("ended", function(){ gotoRelativeChapter(1, true); });
+    bar.appendChild(audio);
+    document.body.appendChild(bar);
+    state._audioBarEl = bar;
+  } else if(state._audioBarEl){
+    state._audioBarEl.remove(); state._audioBarEl = null;
+  }
+
+  var nav = el("div",{class:"chapter-nav", style: audioFile ? "bottom:52px;" : "bottom:0;"});
+  var prevBtn = el("button",{class:"btn", onclick:function(){ gotoRelativeChapter(-1, false); }},["‹ 이전 장"]);
+  var nextBtn = el("button",{class:"btn btn-primary", onclick:function(){ gotoRelativeChapter(1, false); }},["다음 장 ›"]);
+  nav.appendChild(prevBtn); nav.appendChild(nextBtn);
+  document.body.appendChild(nav);
+  state._navEl = nav;
+}
+
+async function stepChapter(delta){ return gotoRelativeChapter(delta, false); }
+
+async function gotoRelativeChapter(delta, autoplay){
+  var total = await getChapterCount(state.version, state.book);
+  var next = state.chapter + delta;
+  var targetBook = state.book, targetChapter;
+  if(next < 1){
+    var prevBookNum = state.book - 1;
+    if(prevBookNum < 1) return;
+    var prevTotal = await getChapterCount(state.version, prevBookNum);
+    targetBook = prevBookNum; targetChapter = prevTotal || 1;
+  } else if(next > total){
+    var nextBookNum = state.book + 1;
+    if(nextBookNum > 66) return;
+    targetBook = nextBookNum; targetChapter = 1;
+  } else {
+    targetChapter = next;
+  }
+  state._pendingAutoplay = !!autoplay;
+  goReading(targetBook, targetChapter);
+}
+
+/* 화면 전환시 이전 오디오바/네비 제거 */
+var _origRender = render;
+render = function(){
+  if(state._audioBarEl){ state._audioBarEl.remove(); state._audioBarEl=null; }
+  if(state._navEl){ state._navEl.remove(); state._navEl=null; }
+  _origRender();
+};
+
+/* ---------- 설정(버전 이름 변경) 모달 ---------- */
+function openSettingsModal(){
+  var backdrop = el("div",{class:"modal-backdrop", onclick:function(e){ if(e.target===backdrop) backdrop.remove(); }});
+  var sheet = el("div",{class:"modal-sheet"});
+  sheet.appendChild(el("h3",{},["버전 이름 편집 · 다시 폴더 연결"]));
+  var keys = Object.keys(state.lfaFiles).sort();
+  keys.forEach(function(k){
+    var item = el("div",{class:"version-item"});
+    var input = el("input",{class:"rename-input", value: labelForFile(state.lfaFiles[k].displayName)});
+    input.addEventListener("change", function(){
+      labelMap[k] = input.value.trim() || state.lfaFiles[k].displayName;
+      lsSet(LS_LABELS, labelMap);
+      updateHeaderForConnected();
+    });
+    item.appendChild(input);
+    sheet.appendChild(item);
+  });
+  var reconnectBtn = el("button",{class:"btn", style:"margin-top:10px; width:100%;", onclick:function(){ backdrop.remove(); goConnectScreen(); }},["📁 다른 폴더로 다시 연결"]);
+  sheet.appendChild(reconnectBtn);
+  var closeBtn = el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%;", onclick:function(){ backdrop.remove(); }},["닫기"]);
+  sheet.appendChild(closeBtn);
+  backdrop.appendChild(sheet);
+  document.body.appendChild(backdrop);
+}
+
+/* ---------- 새 버전 확인 (재설치 없이 업데이트) ---------- */
+var CURRENT_BUILD = (document.querySelector('meta[name="app-build"]') || {}).content || "";
+var $updateBanner = document.getElementById("updateBanner");
+var $updateBtn = document.getElementById("updateBtn");
+var _updateShown = false;
+
+function checkForUpdate(){
+  if(_updateShown || !CURRENT_BUILD) return;
+  fetch(location.href, {cache:"no-store"}).then(function(res){
+    if(!res.ok) return null;
+    return res.text();
+  }).then(function(html){
+    if(!html) return;
+    var m = /<meta name="app-build" content="([^"]*)">/.exec(html);
+    if(m && m[1] && m[1] !== CURRENT_BUILD){
+      _updateShown = true;
+      $updateBanner.style.display = "flex";
+    }
+  }).catch(function(){ /* 오프라인이거나 네트워크 문제면 조용히 무시 */ });
+}
+if($updateBtn) $updateBtn.addEventListener("click", function(){
+  $updateBtn.disabled = true;
+  $updateBtn.textContent = "업데이트 중…";
+  location.reload();
+});
+/* 앱을 열었을 때, 그리고 백그라운드에 있다가 다시 돌아왔을 때 확인 */
+setTimeout(checkForUpdate, 2500);
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "visible") checkForUpdate();
+});
+setInterval(checkForUpdate, 15 * 60 * 1000);
+
+/* ---------- 부트스트랩 ---------- */
+renderInappBanner();
+if(!ENV.isInApp && !ENV.isStandalone && ENV.isIOS && $installBtn){
+  /* iOS Safari는 beforeinstallprompt 이벤트가 없어 안내 버튼을 항상 보여줌 */
+  $installBtn.style.display = "inline-flex";
+}
+if(!ENV.isInApp && !ENV.isStandalone && ENV.isAndroid && $installBtn){
+  /* 안드로이드 Chrome은 beforeinstallprompt가 늦게(혹은 안) 뜰 수 있어, 잠시 기다렸다가
+     이벤트가 없으면 수동 설치 안내 버튼을 대신 보여줌 */
+  setTimeout(function(){
+    if(!deferredInstallPrompt && $installBtn.style.display === "none"){
+      $installBtn.style.display = "inline-flex";
+    }
+  }, 3000);
+}
+
+(async function boot(){
+  var result = await silentRestoreConnection();
+  if(result.status === "granted"){
+    var ok = applyScannedFiles(result.files);
+    if(ok){
+      updateHeaderForConnected();
+      var last = lsGet(LS_LASTPOS, null);
+      if(last && last.book){ state.version = last.version && state.lfaFiles[last.version] ? last.version : state.version; }
+      goLetters();
+      return;
+    }
+  } else if(result.status === "needs-permission"){
+    /* 이전에 연결한 폴더가 있지만, 권한을 다시 확인해야 함 — 사용자의 클릭이 있어야 재요청 가능 */
+    state._pendingReconnectHandle = result.handle;
+  }
+  goConnectScreen();
+})();
+
+})();
+</script>
+
+</body>
+</html>

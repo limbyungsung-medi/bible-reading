@@ -93,7 +93,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-07-5">
+<meta name="app-build" content="2026-09-13-9">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -112,6 +112,7 @@
       <button class="icon-btn" id="menuBtn" title="설정" style="display:none;">⋯</button>
     </div>
     <div class="inapp-banner" id="inappBanner" style="display:none;"></div>
+    <div class="update-banner" id="cacheBanner" style="display:none;"><span></span></div>
     <div class="crumbs" id="crumbs" style="display:none;"></div>
     <div class="update-banner" id="updateBanner" style="display:none;">
       <span>✨ 새 버전이 있어요</span>
@@ -167,6 +168,7 @@ var AUDIO_VERSION_HINT = "kornkrv"; /* 오디오는 개역개정 낭독 */
 var LS_READ = "bible_read_v1";
 var LS_LABELS = "bible_labels_v1";
 var LS_LASTPOS = "bible_lastpos_v1";
+var LS_AUDIORATE = "bible_audiorate_v1";
 function lsGet(key, fallback){
   try{ var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; }
 }
@@ -192,7 +194,8 @@ function bookReadCount(bookNum, totalChapters){
 var state = {
   connected:false,
   lfaFiles:{},      /* filenameLower(without ext) -> File */
-  mp3Files:{},      /* "01_1.mp3" -> File */
+  mp3Files:{},      /* "01_01.mp3" -> File (실제로 읽어온 것만 채워짐) */
+  mp3LazyIndex:null, /* 캐시로 복원된 경우: "01_01.mp3" -> IndexedDB 안의 relPath (아직 안 읽음) */
   zipCache:{},       /* versionKey -> JSZip instance (loaded) */
   chapterCache:{},    /* versionKey|bookNum|chapter -> [verseText,...] */
   chapterCounts:{},   /* versionKey|bookNum -> chapter count (from zip entries) */
@@ -202,7 +205,8 @@ var state = {
   book:null,
   chapter:null,
   targetVerse:null,
-  audioObjUrl:null
+  audioObjUrl:null,
+  audioRate: lsGet(LS_AUDIORATE, 1)
 };
 
 /* ---------- DOM helpers ---------- */
@@ -213,6 +217,7 @@ var $menuBtn = document.getElementById("menuBtn");
 var $brand = document.getElementById("brandLabel");
 var $installBtn = document.getElementById("installBtn");
 var $inappBanner = document.getElementById("inappBanner");
+var $cacheBanner = document.getElementById("cacheBanner");
 
 /* ---------- 실행 환경 감지: 카카오톡 등 인앱 브라우저에서는 홈 화면 설치가 막혀 있음 ---------- */
 function detectEnv(){
@@ -380,38 +385,108 @@ function scanFileInputList(fileListRaw){
   return files;
 }
 
-var IDB_NAME = "bible_app_db", IDB_STORE = "handles";
-function idbSet(key, val){
-  return new Promise(function(resolve){
+/* IndexedDB: dirHandle(FS Access API 지원 브라우저용) 저장소 + files/meta(그 외 브라우저의
+   <input webkitdirectory> 방식용 — 선택한 파일을 통째로 기기에 저장해두고 다음부터는
+   폴더를 다시 고르지 않고 그 캐시로 바로 연결한다) 저장소 */
+var IDB_NAME = "bible_app_db", IDB_VERSION = 2;
+var IDB_STORE = "handles";
+var IDB_FILES_STORE = "files";
+var IDB_META_STORE = "meta";
+function idbOpen(){
+  return new Promise(function(resolve, reject){
     try{
-      var req = indexedDB.open(IDB_NAME, 1);
-      req.onupgradeneeded = function(){ req.result.createObjectStore(IDB_STORE); };
-      req.onsuccess = function(){
+      var req = indexedDB.open(IDB_NAME, IDB_VERSION);
+      req.onupgradeneeded = function(){
         var db = req.result;
-        var tx = db.transaction(IDB_STORE,"readwrite");
-        tx.objectStore(IDB_STORE).put(val, key);
-        tx.oncomplete = function(){ resolve(true); };
-        tx.onerror = function(){ resolve(false); };
+        if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+        if(!db.objectStoreNames.contains(IDB_FILES_STORE)) db.createObjectStore(IDB_FILES_STORE);
+        if(!db.objectStoreNames.contains(IDB_META_STORE)) db.createObjectStore(IDB_META_STORE);
       };
-      req.onerror = function(){ resolve(false); };
-    }catch(e){ resolve(false); }
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ reject(req.error); };
+    }catch(e){ reject(e); }
   });
 }
-function idbGet(key){
-  return new Promise(function(resolve){
-    try{
-      var req = indexedDB.open(IDB_NAME, 1);
-      req.onupgradeneeded = function(){ req.result.createObjectStore(IDB_STORE); };
-      req.onsuccess = function(){
-        var db = req.result;
-        var tx = db.transaction(IDB_STORE,"readonly");
-        var getReq = tx.objectStore(IDB_STORE).get(key);
-        getReq.onsuccess = function(){ resolve(getReq.result || null); };
+function idbSet(key, val, storeName){
+  storeName = storeName || IDB_STORE;
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      try{
+        var tx = db.transaction(storeName,"readwrite");
+        tx.objectStore(storeName).put(val, key);
+        tx.oncomplete = function(){ resolve(true); };
+        tx.onerror = function(){ resolve(false); };
+      }catch(e){ resolve(false); }
+    });
+  }).catch(function(){ return false; });
+}
+function idbGet(key, storeName){
+  storeName = storeName || IDB_STORE;
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      try{
+        var tx = db.transaction(storeName,"readonly");
+        var getReq = tx.objectStore(storeName).get(key);
+        getReq.onsuccess = function(){ resolve(getReq.result != null ? getReq.result : null); };
         getReq.onerror = function(){ resolve(null); };
-      };
-      req.onerror = function(){ resolve(null); };
-    }catch(e){ resolve(null); }
-  });
+      }catch(e){ resolve(null); }
+    });
+  }).catch(function(){ return null; });
+}
+function idbGetAll(storeName){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      try{
+        var tx = db.transaction(storeName,"readonly");
+        var req = tx.objectStore(storeName).getAll();
+        req.onsuccess = function(){ resolve(req.result || []); };
+        req.onerror = function(){ resolve([]); };
+      }catch(e){ resolve([]); }
+    });
+  }).catch(function(){ return []; });
+}
+function idbGetAllKeys(storeName){
+  /* getAll()과 달리 파일(Blob) 내용을 읽지 않고 키 목록만 빠르게 가져온다 —
+     오디오처럼 용량이 큰 파일이 많을 때 getAll()을 쓰면 수 분씩 걸릴 수 있어서
+     "폴더가 연결되어 있는지" 확인할 때는 반드시 이 함수를 써야 한다. */
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      try{
+        var tx = db.transaction(storeName,"readonly");
+        var req = tx.objectStore(storeName).getAllKeys();
+        req.onsuccess = function(){ resolve(req.result || []); };
+        req.onerror = function(){ resolve([]); };
+      }catch(e){ resolve([]); }
+    });
+  }).catch(function(){ return []; });
+}
+function idbClearStore(storeName){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      try{
+        var tx = db.transaction(storeName,"readwrite");
+        tx.objectStore(storeName).clear();
+        tx.oncomplete = function(){ resolve(true); };
+        tx.onerror = function(){ resolve(false); };
+      }catch(e){ resolve(false); }
+    });
+  }).catch(function(){ return false; });
+}
+/* 선택한 파일들(성경 데이터 + MP3)을 통째로 기기에 저장 — <input webkitdirectory> 방식(폴더
+   핸들을 기억할 수 없는 브라우저)에서도 다음부터 다시 고를 필요 없이 자동으로 열리게 해준다 */
+function cacheFilesToIDB(rawFiles){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      try{
+        var tx = db.transaction(IDB_FILES_STORE, "readwrite");
+        var store = tx.objectStore(IDB_FILES_STORE);
+        store.clear();
+        rawFiles.forEach(function(item){ store.put(item, item.relPath); });
+        tx.oncomplete = function(){ resolve(true); };
+        tx.onerror = function(){ resolve(false); };
+      }catch(e){ resolve(false); }
+    });
+  }).catch(function(){ return false; });
 }
 
 async function connectViaPicker(){
@@ -445,19 +520,50 @@ function connectViaInput(){
 
 /* 브라우저 권한 재확인(requestPermission)은 반드시 사용자의 클릭(제스처) 안에서 호출해야 통과된다.
    그래서 부팅 시점에는 조용히 확인만(queryPermission) 하고, 권한이 사라졌으면
-   "다시 연결하기" 버튼을 눌렀을 때 같은 폴더 핸들로 재요청한다 (새로 폴더를 고를 필요 없음). */
+   "다시 연결하기" 버튼을 눌렀을 때 같은 폴더 핸들로 재요청한다 (새로 폴더를 고를 필요 없음).
+   폴더 핸들 자체를 지원하지 않는 브라우저(대부분의 안드로이드/아이폰 브라우저)는
+   처음 연결할 때 파일을 통째로 기기(IndexedDB)에 저장해두고, 그 캐시로 자동 복원한다. */
+async function tryRestoreFromFileCache(){
+  /* 오디오 파일까지 전부 getAll()로 읽어오면(수백 MB~1GB) 실제로 화면이 뜨기까지
+     몇 분씩 걸릴 수 있다. 그래서 여기서는 "어떤 파일이 있는지" 목록(getAllKeys, 아주 빠름)만
+     확인하고, 용량이 작은 성경 본문(.lfa)만 미리 읽어온 뒤, 오디오(mp3)는 실제로 그 장을
+     열 때 그때그때 하나씩 불러온다(state.mp3LazyIndex + getAudioFile 참고). */
+  try{
+    var cachedAt = await idbGet("filesCachedAt", IDB_META_STORE);
+    if(!cachedAt) return {status:"none"};
+    var keys = await idbGetAllKeys(IDB_FILES_STORE);
+    if(!keys || !keys.length) return {status:"none"};
+    var lfaRawFiles = [];
+    var mp3LazyIndex = {};
+    for(var i=0;i<keys.length;i++){
+      var relPath = String(keys[i]).replace(/\\/g,"/");
+      var parts = relPath.split("/").filter(Boolean);
+      if(parts.length < 2) continue;
+      var inner = parts.slice(1);
+      if(inner.length === 1 && /\.lfa$/i.test(inner[0])){
+        var item = await idbGet(keys[i], IDB_FILES_STORE);
+        if(item) lfaRawFiles.push(item);
+      } else if(inner.length === 2 && /^mp3$/i.test(inner[0]) && /\.mp3$/i.test(inner[1])){
+        mp3LazyIndex[inner[1].toLowerCase()] = keys[i];
+      }
+    }
+    if(!lfaRawFiles.length) return {status:"none"};
+    return {status:"granted-cached", lfaRawFiles:lfaRawFiles, mp3LazyIndex:mp3LazyIndex};
+  }catch(e){ return {status:"none"}; }
+}
+
 async function silentRestoreConnection(){
-  if(!supportsFSAccess) return {status:"unsupported"};
+  if(!supportsFSAccess) return await tryRestoreFromFileCache();
   try{
     var handle = await idbGet("dirHandle");
-    if(!handle) return {status:"none"};
+    if(!handle) return await tryRestoreFromFileCache();
     var perm = await handle.queryPermission({mode:"read"});
     if(perm === "granted"){
       var files = await scanDirectoryHandle(handle);
       return {status:"granted", files:files};
     }
     return {status:"needs-permission", handle:handle};
-  }catch(e){ return {status:"none"}; }
+  }catch(e){ return await tryRestoreFromFileCache(); }
 }
 
 async function reRequestPermission(handle){
@@ -466,10 +572,26 @@ async function reRequestPermission(handle){
   return await scanDirectoryHandle(handle);
 }
 
+async function clearSavedConnection(){
+  try{ await idbSet("dirHandle", null); }catch(e){}
+  await idbClearStore(IDB_FILES_STORE);
+  await idbClearStore(IDB_META_STORE);
+}
+
 function applyScannedFiles(rawFiles){
   var idx = indexFilesFromList(rawFiles);
   state.lfaFiles = idx.lfa;
   state.mp3Files = idx.mp3;
+  state.mp3LazyIndex = null; /* 폴더/파일을 직접 연결한 경우엔 이미 실제 File을 다 갖고 있어 필요 없음 */
+  state.connected = Object.keys(idx.lfa).length > 0;
+  return state.connected;
+}
+
+function applyCachedFiles(lfaRawFiles, mp3LazyIndex){
+  var idx = indexFilesFromList(lfaRawFiles); /* lfaRawFiles엔 .lfa만 들어있음 */
+  state.lfaFiles = idx.lfa;
+  state.mp3Files = {}; /* 실제로 그 장을 열 때 getAudioFile()이 채워 넣음 */
+  state.mp3LazyIndex = mp3LazyIndex || {};
   state.connected = Object.keys(idx.lfa).length > 0;
   return state.connected;
 }
@@ -531,9 +653,22 @@ async function getChapterCount(versionKey, bookNum){
   return max;
 }
 
-function getAudioFile(bookNum, chapter){
-  var key = pad2(bookNum) + "_" + chapter + ".mp3";
-  return state.mp3Files[key] || null;
+async function getAudioFile(bookNum, chapter){
+  /* 오디오 파일명 규칙: 책번호_장번호.mp3 (둘 다 최소 2자리, 예: 01_01.mp3, 66_22.mp3, 19_119.mp3) */
+  var key = pad2(bookNum) + "_" + pad2(chapter) + ".mp3";
+  if(state.mp3Files[key]) return state.mp3Files[key];
+  /* 캐시로 복원된 경우: 실제 오디오 데이터는 이 순간에 딱 하나만 IndexedDB에서 읽어온다
+     (부팅할 때 전부 미리 읽지 않으므로 앱이 바로 켜진다) */
+  if(state.mp3LazyIndex && state.mp3LazyIndex[key]){
+    try{
+      var item = await idbGet(state.mp3LazyIndex[key], IDB_FILES_STORE);
+      if(item && item.file){
+        state.mp3Files[key] = item.file;
+        return item.file;
+      }
+    }catch(e){ /* 무시 */ }
+  }
+  return null;
 }
 
 /* ---------- 화면 렌더링 ---------- */
@@ -632,9 +767,9 @@ function renderConnect(){
     wrap.appendChild(steps);
     var btn = el("button",{class:"btn btn-primary", style:"padding:12px 22px;font-size:14px;", onclick:onConnectClick},["📁 bible 폴더 연결하기"]);
     wrap.appendChild(btn);
-    if(supportsFSAccess){
-      wrap.appendChild(el("p",{style:"font-size:11.5px; color:var(--text-dim); max-width:320px;"},["이 브라우저에서는 한 번 연결하면 계속 유지돼요. 다음에 열 때는 버튼 한 번만 눌러 다시 연결하면 됩니다."]));
-    }
+    wrap.appendChild(el("p",{style:"font-size:11.5px; color:var(--text-dim); max-width:320px;"},[
+      "한 번 연결하면 다음부터는 자동으로 열려요. (처음 연결할 때 자료 양이 많으면 기기에 저장하느라 잠깐 시간이 걸릴 수 있어요)"
+    ]));
   }
   var errBox = el("div",{class:"error-box", id:"connectError", style:"display:none;"});
   wrap.appendChild(errBox);
@@ -646,14 +781,17 @@ async function onConnectClick(){
   errBox.style.display = "none";
   try{
     var files;
+    var usedInput = false;
     if(supportsFSAccess){
       try{ files = await connectViaPicker(); }
       catch(e){
         if(e && e.name === "AbortError") return;
         files = await connectViaInput();
+        usedInput = true;
       }
     } else {
       files = await connectViaInput();
+      usedInput = true;
     }
     var ok = applyScannedFiles(files);
     if(!ok){
@@ -664,11 +802,34 @@ async function onConnectClick(){
     state._pendingReconnectHandle = null;
     updateHeaderForConnected();
     goLetters();
+    if(usedInput) cacheFilesInBackground(files);
   }catch(e){
     if(e && e.message === "no-selection") return;
     errBox.textContent = "폴더를 연결하는 중 문제가 발생했어요: " + (e && e.message ? e.message : e);
     errBox.style.display = "block";
   }
+}
+
+/* 폴더 핸들을 기억 못 하는 브라우저용: 선택한 파일을 화면 전환 후 백그라운드로 기기에 저장해서
+   다음부터는 폴더를 다시 고르지 않아도 자동으로 열리게 한다. 읽기 시작을 막지 않기 위해
+   goLetters() 이후, 읽는 도중에 조용히 진행된다. */
+function cacheFilesInBackground(files){
+  if($cacheBanner){
+    $cacheBanner.style.display = "flex";
+    $cacheBanner.querySelector("span").textContent = "💾 다음에도 자동으로 열리도록 저장하는 중… (창을 닫지 말아주세요)";
+  }
+  cacheFilesToIDB(files).then(function(success){
+    if(success){
+      idbSet("filesCachedAt", Date.now(), IDB_META_STORE);
+      if($cacheBanner){
+        $cacheBanner.querySelector("span").textContent = "✅ 저장 완료! 다음부터는 자동으로 열려요.";
+        setTimeout(function(){ if($cacheBanner) $cacheBanner.style.display = "none"; }, 3000);
+      }
+    } else if($cacheBanner){
+      $cacheBanner.querySelector("span").textContent = "⚠️ 저장 공간 부족 등으로 자동 연결 저장에 실패했어요. 다음에 열 때 다시 연결해주세요.";
+      setTimeout(function(){ if($cacheBanner) $cacheBanner.style.display = "none"; }, 5000);
+    }
+  });
 }
 
 async function onReconnectClick(){
@@ -819,32 +980,47 @@ function renderReading(){
     }
   });
 
-  /* 하단 바: 오디오 + 이전/다음 장 */
-  var audioFile = getAudioFile(state.book, state.chapter);
-  var shouldAutoplay = !!state._pendingAutoplay;
-  state._pendingAutoplay = false;
-  if(audioFile){
-    if(state.audioObjUrl) URL.revokeObjectURL(state.audioObjUrl);
-    state.audioObjUrl = URL.createObjectURL(audioFile);
-    var bar = el("div",{class:"audio-bar"});
-    bar.appendChild(el("span",{style:"font-size:18px;"},["🔊"]));
-    var audioAttrs = {controls:"controls", src:state.audioObjUrl};
-    if(shouldAutoplay) audioAttrs.autoplay = "autoplay";
-    var audio = el("audio", audioAttrs);
-    audio.addEventListener("ended", function(){ gotoRelativeChapter(1, true); });
-    bar.appendChild(audio);
-    document.body.appendChild(bar);
-    state._audioBarEl = bar;
-  } else if(state._audioBarEl){
-    state._audioBarEl.remove(); state._audioBarEl = null;
-  }
-
-  var nav = el("div",{class:"chapter-nav", style: audioFile ? "bottom:52px;" : "bottom:0;"});
+  /* 하단 바: 이전/다음 장 내비게이션은 바로 그려두고(오디오 유무를 기다리지 않음),
+     오디오는 찾아지는 대로(캐시에서 복원된 경우 그 장의 mp3 하나만 방금 불러옴) 붙인다. */
+  var nav = el("div",{class:"chapter-nav", style:"bottom:0;"});
   var prevBtn = el("button",{class:"btn", onclick:function(){ gotoRelativeChapter(-1, false); }},["‹ 이전 장"]);
   var nextBtn = el("button",{class:"btn btn-primary", onclick:function(){ gotoRelativeChapter(1, false); }},["다음 장 ›"]);
   nav.appendChild(prevBtn); nav.appendChild(nextBtn);
   document.body.appendChild(nav);
   state._navEl = nav;
+
+  var shouldAutoplay = !!state._pendingAutoplay;
+  state._pendingAutoplay = false;
+  var forBook = state.book, forChapter = state.chapter;
+  getAudioFile(state.book, state.chapter).then(function(audioFile){
+    /* 오디오를 찾는 사이에 사용자가 이미 다른 장으로 넘어갔으면 이 결과는 버린다 */
+    if(state.book !== forBook || state.chapter !== forChapter) return;
+    if(audioFile){
+      if(state.audioObjUrl) URL.revokeObjectURL(state.audioObjUrl);
+      state.audioObjUrl = URL.createObjectURL(audioFile);
+      var bar = el("div",{class:"audio-bar"});
+      bar.appendChild(el("span",{style:"font-size:18px;"},["🔊"]));
+      var audioAttrs = {controls:"controls", src:state.audioObjUrl};
+      if(shouldAutoplay) audioAttrs.autoplay = "autoplay";
+      var audio = el("audio", audioAttrs);
+      audio.playbackRate = state.audioRate || 1;
+      /* 사용자가 재생 속도를 바꾸면(브라우저 기본 컨트롤의 배속 메뉴 등) 다음 장에도 그대로 이어서 적용 */
+      audio.addEventListener("ratechange", function(){
+        if(audio.playbackRate && audio.playbackRate !== state.audioRate){
+          state.audioRate = audio.playbackRate;
+          lsSet(LS_AUDIORATE, state.audioRate);
+        }
+      });
+      audio.addEventListener("loadedmetadata", function(){ audio.playbackRate = state.audioRate || 1; });
+      audio.addEventListener("ended", function(){ gotoRelativeChapter(1, true); });
+      bar.appendChild(audio);
+      document.body.appendChild(bar);
+      state._audioBarEl = bar;
+      nav.style.bottom = "52px";
+    } else if(state._audioBarEl){
+      state._audioBarEl.remove(); state._audioBarEl = null;
+    }
+  });
 }
 
 async function stepChapter(delta){ return gotoRelativeChapter(delta, false); }
@@ -896,6 +1072,10 @@ function openSettingsModal(){
   });
   var reconnectBtn = el("button",{class:"btn", style:"margin-top:10px; width:100%;", onclick:function(){ backdrop.remove(); goConnectScreen(); }},["📁 다른 폴더로 다시 연결"]);
   sheet.appendChild(reconnectBtn);
+  var clearBtn = el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%; font-size:12px; color:var(--danger);", onclick:function(){
+    clearSavedConnection().then(function(){ backdrop.remove(); goConnectScreen(); });
+  }},["🗑️ 저장된 자료 지우고 새로 연결하기"]);
+  sheet.appendChild(clearBtn);
   var closeBtn = el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%;", onclick:function(){ backdrop.remove(); }},["닫기"]);
   sheet.appendChild(closeBtn);
   backdrop.appendChild(sheet);
@@ -958,6 +1138,16 @@ if(!ENV.isInApp && !ENV.isStandalone && ENV.isAndroid && $installBtn){
       updateHeaderForConnected();
       var last = lsGet(LS_LASTPOS, null);
       if(last && last.book){ state.version = last.version && state.lfaFiles[last.version] ? last.version : state.version; }
+      goLetters();
+      return;
+    }
+  } else if(result.status === "granted-cached"){
+    /* 기기에 저장해둔 캐시로 복원(오디오는 아직 안 읽었고, 그 장을 열 때 하나씩 읽어옴) */
+    var ok2 = applyCachedFiles(result.lfaRawFiles, result.mp3LazyIndex);
+    if(ok2){
+      updateHeaderForConnected();
+      var last2 = lsGet(LS_LASTPOS, null);
+      if(last2 && last2.book){ state.version = last2.version && state.lfaFiles[last2.version] ? last2.version : state.version; }
       goLetters();
       return;
     }

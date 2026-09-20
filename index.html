@@ -93,7 +93,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-20-1">
+<meta name="app-build" content="2026-09-21-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -350,8 +350,9 @@ function indexFilesFromList(fileList){
           var key = fname.replace(/\.lfa$/i,"");
           if(!(key.toLowerCase() in lfa)) lfa[key.toLowerCase()] = {displayName:key, file:item.file};
         }
-      } else if(inner.length === 2 && /^mp3$/i.test(inner[0]) && /\.mp3$/i.test(inner[1])){
-        mp3[inner[1].toLowerCase()] = item.file;
+      } else if(inner.length >= 2 && /^mp3$/i.test(inner[0])){
+        var mfname = inner[inner.length-1];
+        if(/\.mp3$/i.test(mfname)) mp3[mfname.toLowerCase()] = item.file;
       }
     }
   });
@@ -590,8 +591,9 @@ async function tryRestoreFromFileCache(){
       if(inner.length === 1 && /\.lfa$/i.test(inner[0])){
         var item = await idbGet(keys[i], IDB_FILES_STORE);
         if(item) lfaRawFiles.push(item);
-      } else if(inner.length === 2 && /^mp3$/i.test(inner[0]) && /\.mp3$/i.test(inner[1])){
-        mp3LazyIndex[inner[1].toLowerCase()] = keys[i];
+      } else if(inner.length >= 2 && /^mp3$/i.test(inner[0])){
+        var mfname2 = inner[inner.length-1];
+        if(/\.mp3$/i.test(mfname2)) mp3LazyIndex[mfname2.toLowerCase()] = keys[i];
       }
     }
     if(!lfaRawFiles.length) return {status:"none"};
@@ -701,19 +703,28 @@ async function getChapterCount(versionKey, bookNum){
 }
 
 async function getAudioFile(bookNum, chapter){
-  /* 오디오 파일명 규칙: 책번호_장번호.mp3 (둘 다 최소 2자리, 예: 01_01.mp3, 66_22.mp3, 19_119.mp3) */
-  var key = pad2(bookNum) + "_" + pad2(chapter) + ".mp3";
-  if(state.mp3Files[key]) return state.mp3Files[key];
+  /* 오디오 파일명 규칙: 책번호_장번호.mp3. 책번호는 항상 2자리(01~66)지만, 장번호는
+     실제 자료를 보면 0으로 채우지 않은 경우(01_1.mp3, 01_9.mp3)와 채운 경우(01_01.mp3)가
+     둘 다 있을 수 있어서 두 가지 다 시도한다. */
+  var keyPlain = pad2(bookNum) + "_" + chapter + ".mp3";
+  var keyPadded = pad2(bookNum) + "_" + pad2(chapter) + ".mp3";
+  var keys = keyPlain === keyPadded ? [keyPlain] : [keyPlain, keyPadded];
+  for(var i=0;i<keys.length;i++){
+    if(state.mp3Files[keys[i]]) return state.mp3Files[keys[i]];
+  }
   /* 캐시로 복원된 경우: 실제 오디오 데이터는 이 순간에 딱 하나만 IndexedDB에서 읽어온다
      (부팅할 때 전부 미리 읽지 않으므로 앱이 바로 켜진다) */
-  if(state.mp3LazyIndex && state.mp3LazyIndex[key]){
-    try{
-      var item = await idbGet(state.mp3LazyIndex[key], IDB_FILES_STORE);
-      if(item && item.file){
-        state.mp3Files[key] = item.file;
-        return item.file;
-      }
-    }catch(e){ /* 무시 */ }
+  for(var j=0;j<keys.length;j++){
+    var key = keys[j];
+    if(state.mp3LazyIndex && state.mp3LazyIndex[key]){
+      try{
+        var item = await idbGet(state.mp3LazyIndex[key], IDB_FILES_STORE);
+        if(item && item.file){
+          state.mp3Files[key] = item.file;
+          return item.file;
+        }
+      }catch(e){ /* 무시 */ }
+    }
   }
   return null;
 }

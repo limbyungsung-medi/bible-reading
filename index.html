@@ -93,7 +93,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-21-1">
+<meta name="app-build" content="2026-09-21-2">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -352,7 +352,7 @@ function indexFilesFromList(fileList){
         }
       } else if(inner.length >= 2 && /^mp3$/i.test(inner[0])){
         var mfname = inner[inner.length-1];
-        if(/\.mp3$/i.test(mfname)) mp3[mfname.toLowerCase()] = item.file;
+        if(/\.mp3$/i.test(mfname)) mp3[mfname.toLowerCase()] = item.file || item.handle;
       }
     }
   });
@@ -360,19 +360,27 @@ function indexFilesFromList(fileList){
 }
 
 async function scanDirectoryHandle(dirHandle){
+  /* mp3(오디오) 폴더 안의 파일들은 여기서 절대 entry.getFile()을 호출하지 않는다 —
+     수백~천 개가 넘는 오디오 파일을 하나하나 다 읽으면(특히 모바일 SAF에서) 폴더를
+     다시 연결할 때마다 30초~1분씩 걸릴 수 있다. 대신 핸들만 기억해두고, 실제로 그
+     장을 열 때 getAudioFile()에서 그 파일 하나만 그때그때 읽는다(지연 로딩). */
   var files = [];
-  async function walk(handle, path){
+  async function walk(handle, path, insideMp3){
     for await (var entry of handle.values()){
       var entryPath = path + "/" + entry.name;
       if(entry.kind === "file"){
-        var f = await entry.getFile();
-        files.push({name:entry.name, relPath:entryPath, file:f});
+        if(insideMp3){
+          if(/\.mp3$/i.test(entry.name)) files.push({name:entry.name, relPath:entryPath, handle:entry});
+        } else {
+          var f = await entry.getFile();
+          files.push({name:entry.name, relPath:entryPath, file:f});
+        }
       } else if(entry.kind === "directory"){
-        await walk(entry, entryPath);
+        await walk(entry, entryPath, insideMp3 || /^mp3$/i.test(entry.name));
       }
     }
   }
-  await walk(dirHandle, dirHandle.name);
+  await walk(dirHandle, dirHandle.name, false);
   return files;
 }
 
@@ -710,7 +718,20 @@ async function getAudioFile(bookNum, chapter){
   var keyPadded = pad2(bookNum) + "_" + pad2(chapter) + ".mp3";
   var keys = keyPlain === keyPadded ? [keyPlain] : [keyPlain, keyPadded];
   for(var i=0;i<keys.length;i++){
-    if(state.mp3Files[keys[i]]) return state.mp3Files[keys[i]];
+    var raw = state.mp3Files[keys[i]];
+    if(raw){
+      /* 폴더를 직접 연결한 경우(FS Access API) mp3Files 안에는 아직 안 읽은
+         FileSystemFileHandle이 들어있을 수 있다 — 이 장을 열 때 딱 하나만 여기서 읽는다 */
+      if(typeof raw.getFile === "function"){
+        try{
+          var resolved = await raw.getFile();
+          state.mp3Files[keys[i]] = resolved;
+          return resolved;
+        }catch(e){ /* 무시하고 다음 key 시도 */ }
+      } else {
+        return raw;
+      }
+    }
   }
   /* 캐시로 복원된 경우: 실제 오디오 데이터는 이 순간에 딱 하나만 IndexedDB에서 읽어온다
      (부팅할 때 전부 미리 읽지 않으므로 앱이 바로 켜진다) */

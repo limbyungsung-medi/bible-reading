@@ -11,6 +11,8 @@
     --bg:#f5f3ec; --surface:#ffffff; --border:#e2ddcf; --text:#241f1a; --text-dim:#78705f;
     /* 리본 책갈피(버건디) + 금박 페이지 끝(골드) — 두 개의 역할이 다른 강조색 */
     --accent:#7c2f3d; --accent-soft:#f4e4e6; --read:#b8873a; --read-text:#fff9ef;
+    /* 묵상 하이라이트(형광펜): 성경 본문에서 사용자가 직접 표시하는 구절 */
+    --mark-bg:#fdf0a8; --mark-border:#d9b93f;
     --danger:#a4402f; --shadow:0 1px 2px rgba(36,31,26,.06),0 6px 16px rgba(36,31,26,.06);
     --error-bg:#fbe9e4;
     --font-serif:"Source Serif 4",Georgia,"Noto Serif KR",serif;
@@ -22,6 +24,7 @@
       /* 어두운 가죽 장정 */
       --bg:#181410; --surface:#231d17; --border:#382f24; --text:#ece4d6; --text-dim:#a89a83;
       --accent:#d98a97; --accent-soft:#3a2229; --read:#d1a75c; --read-text:#211705;
+      --mark-bg:#4a3f14; --mark-border:#8a7326;
       --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.3);
       --danger:#e2917e;
       --error-bg:#392019;
@@ -30,6 +33,7 @@
   :root[data-theme="dark"]{
     --bg:#181410; --surface:#231d17; --border:#382f24; --text:#ece4d6; --text-dim:#a89a83;
     --accent:#d98a97; --accent-soft:#3a2229; --read:#d1a75c; --read-text:#211705;
+    --mark-bg:#4a3f14; --mark-border:#8a7326;
     --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.3);
     --danger:#e2917e;
     --error-bg:#392019;
@@ -70,9 +74,18 @@
   .verse-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:7px;}
   .verse-row.highlight{background:var(--accent-soft); border-radius:8px; scroll-margin-top:70px;}
   .verse-view{display:flex; flex-direction:column; gap:2px;}
-  .verse-row{display:flex; gap:8px; padding:7px 2px; font-size:16px; line-height:1.75;}
+  .verse-row{display:flex; gap:8px; padding:7px 2px; font-size:16px; line-height:1.75; border-radius:8px; cursor:pointer; align-items:flex-start;}
+  .verse-row.user-mark{background:var(--mark-bg); box-shadow:inset 2px 0 0 var(--mark-border);}
   .verse-num{font-family:var(--font-serif); color:var(--accent); font-weight:700; font-size:12.5px; min-width:22px; padding-top:3px;}
   .verse-text{flex:1;}
+  .verse-copy-btn{flex:none; border:none; background:transparent; color:var(--mark-border); font-size:15px; padding:2px 4px; cursor:pointer; line-height:1;}
+  .toast{position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(8px); z-index:40; background:var(--text); color:var(--bg); padding:9px 18px; border-radius:100px; font-size:12.5px; font-weight:600; box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease; max-width:80%; text-align:center;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .highlight-item{background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--mark-border); border-radius:10px; padding:10px 12px; margin-bottom:8px;}
+  .highlight-item .ref{font-family:var(--font-serif); font-size:11.5px; color:var(--accent); font-weight:700; margin-bottom:4px;}
+  .highlight-item .txt{font-size:14px; line-height:1.6; margin-bottom:6px;}
+  .highlight-item .actions{display:flex; gap:6px;}
+  .highlight-item .actions button{font-size:11.5px; padding:5px 10px;}
   .audio-bar{position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; align-items:center; gap:10px; max-width:720px; margin:0 auto;}
   .audio-bar audio{flex:1; height:32px;}
   .chapter-nav{position:fixed; left:0; right:0; bottom:0; z-index:5; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; gap:8px; max-width:720px; margin:0 auto;}
@@ -93,7 +106,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-21-2">
+<meta name="app-build" content="2026-09-21-4">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -169,6 +182,7 @@ var LS_READ = "bible_read_v1";
 var LS_LABELS = "bible_labels_v1";
 var LS_LASTPOS = "bible_lastpos_v1";
 var LS_AUDIORATE = "bible_audiorate_v1";
+var LS_HIGHLIGHTS = "bible_highlights_v1";
 function lsGet(key, fallback){
   try{ var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; }
 }
@@ -188,6 +202,65 @@ function bookReadCount(bookNum, totalChapters){
   var c=0;
   for(var i=1;i<=totalChapters;i++){ if(isRead(bookNum,i)) c++; }
   return c;
+}
+
+/* ---------- 하이라이트(묵상 구절 표시) ---------- */
+/* 버전에 상관없이(개역개정/새번역 등 어느 걸 읽든) 같은 절이면 같은 표시로 남도록
+   isRead와 같은 방식으로 책+장+절만으로 키를 만든다. 절 본문(text)은 나중에 모아보기 화면과
+   복사 기능에서 다시 그 파일을 열지 않고 바로 쓸 수 있도록 같이 저장해둔다. */
+var highlightMap = lsGet(LS_HIGHLIGHTS, {});
+function highlightKey(bookNum, chapter, verse){ return pad2(bookNum)+"_"+chapter+"_"+verse; }
+function isHighlighted(bookNum, chapter, verse){ return !!highlightMap[highlightKey(bookNum,chapter,verse)]; }
+function toggleHighlight(bookNum, chapter, verse, text){
+  var k = highlightKey(bookNum,chapter,verse);
+  var nowOn;
+  if(highlightMap[k]){ delete highlightMap[k]; nowOn = false; }
+  else { highlightMap[k] = {book:bookNum, chapter:chapter, verse:verse, text:text, ts:Date.now()}; nowOn = true; }
+  lsSet(LS_HIGHLIGHTS, highlightMap);
+  return nowOn;
+}
+function allHighlights(){
+  return Object.keys(highlightMap).map(function(k){ return highlightMap[k]; }).sort(function(a,b){
+    if(a.book !== b.book) return a.book - b.book;
+    if(a.chapter !== b.chapter) return a.chapter - b.chapter;
+    return a.verse - b.verse;
+  });
+}
+function refLabel(bookNum, chapter, verse){
+  var b = bookByNum(bookNum);
+  return (b ? b.ko : bookNum) + " " + chapter + "장 " + verse + "절";
+}
+
+/* ---------- 구절 복사 & 토스트 ---------- */
+var $toast = null;
+function showToast(msg){
+  if(!$toast){
+    $toast = el("div",{class:"toast"});
+    document.body.appendChild($toast);
+  }
+  $toast.textContent = msg;
+  $toast.classList.add("show");
+  clearTimeout($toast._hideTimer);
+  $toast._hideTimer = setTimeout(function(){ $toast.classList.remove("show"); }, 1600);
+}
+function copyText(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(text).catch(function(){ return fallbackCopy(text); });
+  }
+  return fallbackCopy(text);
+}
+function fallbackCopy(text){
+  try{
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    return Promise.resolve();
+  }catch(e){ return Promise.reject(e); }
 }
 
 /* ---------- 앱 상태 ---------- */
@@ -326,7 +399,13 @@ function el(tag, attrs, children){
 function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); }
 
 /* ---------- 폴더 연결 ---------- */
-var supportsFSAccess = (typeof window.showDirectoryPicker === "function");
+/* 폴더 핸들 기억 방식(File System Access API)은 일부러 쓰지 않는다 — 안드로이드 크롬처럼
+   그 방식을 지원하는 브라우저에서도, 앱을 다시 열 때마다 권한이 유지되지 않아서 매번
+   "이전 폴더 다시 연결하기" 버튼을 사용자가 직접 눌러야 하는 문제가 있었다(브라우저 보안 정책상
+   권한 재요청은 반드시 클릭 안에서만 가능해서, 코드로는 건너뛸 수 없었다). 대신 항상
+   <input webkitdirectory>로 연결하고 기기(IndexedDB)에 캐시해두는 방식만 쓰면, 다음부터는
+   버튼 없이 완전히 자동으로(조용히) 다시 열린다. */
+var supportsFSAccess = false;
 
 function labelForFile(filenameNoExt){
   var lower = filenameNoExt.toLowerCase();
@@ -1040,10 +1119,23 @@ function renderReading(){
     }
     verses.forEach(function(v){
       var isTarget = state.targetVerse && v.v === state.targetVerse;
-      var row = el("div",{class:"verse-row"+(isTarget?" highlight":"")},[
-        el("div",{class:"verse-num"},[String(v.v)]),
-        el("div",{class:"verse-text"},[v.text])
-      ]);
+      var marked = isHighlighted(state.book, state.chapter, v.v);
+      var row = el("div",{class:"verse-row"+(isTarget?" highlight":"")+(marked?" user-mark":"")});
+      row.appendChild(el("div",{class:"verse-num"},[String(v.v)]));
+      row.appendChild(el("div",{class:"verse-text"},[v.text]));
+      var copyBtn = el("button",{class:"verse-copy-btn", title:"복사", style:marked?"":"display:none;", onclick:function(e){
+        e.stopPropagation();
+        copyText(refLabel(state.book, state.chapter, v.v) + " " + v.text).then(function(){
+          showToast("복사됐어요 — 묵상 노트에 붙여넣으세요");
+        });
+      }},["📋"]);
+      row.appendChild(copyBtn);
+      row.addEventListener("click", function(){
+        var nowOn = toggleHighlight(state.book, state.chapter, v.v, v.text);
+        row.classList.toggle("user-mark", nowOn);
+        copyBtn.style.display = nowOn ? "" : "none";
+        if(nowOn) showToast("하이라이트 표시됨");
+      });
       if(isTarget) row.id = "targetVerseRow";
       verseWrap.appendChild(row);
     });
@@ -1149,7 +1241,9 @@ function openSettingsModal(){
     item.appendChild(input);
     sheet.appendChild(item);
   });
-  var reconnectBtn = el("button",{class:"btn", style:"margin-top:10px; width:100%;", onclick:function(){ backdrop.remove(); goConnectScreen(); }},["📁 다른 폴더로 다시 연결"]);
+  var highlightsBtn = el("button",{class:"btn", style:"margin-top:10px; width:100%;", onclick:function(){ backdrop.remove(); openHighlightsModal(); }},["⭐ 하이라이트 모아보기"]);
+  sheet.appendChild(highlightsBtn);
+  var reconnectBtn = el("button",{class:"btn", style:"margin-top:6px; width:100%;", onclick:function(){ backdrop.remove(); goConnectScreen(); }},["📁 다른 폴더로 다시 연결"]);
   sheet.appendChild(reconnectBtn);
   var clearBtn = el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%; font-size:12px; color:var(--danger);", onclick:function(){
     clearSavedConnection().then(function(){ backdrop.remove(); goConnectScreen(); });
@@ -1157,6 +1251,58 @@ function openSettingsModal(){
   sheet.appendChild(clearBtn);
   var closeBtn = el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%;", onclick:function(){ backdrop.remove(); }},["닫기"]);
   sheet.appendChild(closeBtn);
+  backdrop.appendChild(sheet);
+  document.body.appendChild(backdrop);
+}
+
+/* ---------- 하이라이트 모아보기(묵상 노트용) ---------- */
+function openHighlightsModal(){
+  /* 모아보기 화면에서 "지우기"로 하이라이트를 없애도, 뒤에 이미 그려져 있던 읽기 화면의
+     구절 표시(user-mark)는 자동으로 갱신되지 않는다 — 모달을 닫을 때 변경이 있었으면
+     읽기 화면을 다시 그려서 반영한다. */
+  var changed = false;
+  function closeAndSync(){
+    backdrop.remove();
+    if(changed && state.screen === "reading") render();
+  }
+  var backdrop = el("div",{class:"modal-backdrop", onclick:function(e){ if(e.target===backdrop) closeAndSync(); }});
+  var sheet = el("div",{class:"modal-sheet"});
+  sheet.appendChild(el("h3",{},["⭐ 하이라이트 모아보기"]));
+  var items = allHighlights();
+  if(!items.length){
+    sheet.appendChild(el("div",{class:"empty-hint"},["아직 표시한 구절이 없어요. 본문에서 구절을 눌러 하이라이트해보세요."]));
+  } else {
+    var copyAllBtn = el("button",{class:"btn btn-primary", style:"width:100%; margin-bottom:12px;", onclick:function(){
+      var combined = items.map(function(h){ return refLabel(h.book,h.chapter,h.verse) + " " + h.text; }).join("\n\n");
+      copyText(combined).then(function(){ showToast("전체 " + items.length + "개 구절을 복사했어요"); });
+    }},["📋 전체 복사 (" + items.length + "개)"]);
+    sheet.appendChild(copyAllBtn);
+    var list = el("div",{});
+    items.forEach(function(h){
+      var item = el("div",{class:"highlight-item"});
+      item.appendChild(el("div",{class:"ref"},[refLabel(h.book,h.chapter,h.verse)]));
+      item.appendChild(el("div",{class:"txt"},[h.text]));
+      var actions = el("div",{class:"actions"});
+      actions.appendChild(el("button",{class:"btn", onclick:function(){
+        copyText(refLabel(h.book,h.chapter,h.verse) + " " + h.text).then(function(){ showToast("복사됐어요"); });
+      }},["복사"]));
+      actions.appendChild(el("button",{class:"btn", onclick:function(){
+        goReading(h.book, h.chapter, h.verse);
+        backdrop.remove();
+      }},["본문 보기"]));
+      actions.appendChild(el("button",{class:"btn btn-ghost", style:"color:var(--danger);", onclick:function(){
+        toggleHighlight(h.book, h.chapter, h.verse, h.text);
+        changed = true;
+        item.remove();
+        showToast("하이라이트를 지웠어요");
+      }},["지우기"]));
+      item.appendChild(actions);
+      list.appendChild(item);
+    });
+    sheet.appendChild(list);
+  }
+  var closeBtn2 = el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%;", onclick:closeAndSync},["닫기"]);
+  sheet.appendChild(closeBtn2);
   backdrop.appendChild(sheet);
   document.body.appendChild(backdrop);
 }

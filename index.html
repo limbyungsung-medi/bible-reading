@@ -93,7 +93,7 @@
   .highlight-item textarea{width:100%; margin-bottom:8px; border:1px solid var(--border); border-radius:8px; padding:7px 8px; font-size:12.5px; font-family:inherit; background:var(--bg); color:var(--text); resize:vertical; min-height:42px;}
   .highlight-item .actions{display:flex; gap:6px;}
   .highlight-item .actions button{font-size:11.5px; padding:5px 10px;}
-  .selection-bar{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; padding:8px 12px; background:var(--mark-bg); border:1px solid var(--mark-border); border-radius:10px; font-size:12.5px; color:var(--text);}
+  .selection-bar{position:fixed; left:0; right:0; z-index:7; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; background:var(--mark-bg); border-top:1px solid var(--mark-border); box-shadow:var(--shadow); font-size:12.5px; color:var(--text); max-width:720px; margin:0 auto;}
   .selection-bar .btn{font-size:11.5px; padding:6px 10px;}
   .fontsize-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; margin-bottom:12px;}
   .fontsize-row .label{font-size:13px; font-weight:600;}
@@ -128,7 +128,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-22-3">
+<meta name="app-build" content="2026-09-22-4">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1419,15 +1419,24 @@ function renderReading(){
   wrap.appendChild(head);
   /* 이 장에서 선택(하이라이트)한 구절이 하나라도 있으면 "n개 선택됨 + 한꺼번에 복사" 바를
      보여준다. 연속이든 몇 절 걸러서 선택했든 상관없이 지금까지 표시해둔 구절을 절 순서대로
-     모아서 한 번에 복사할 수 있다. */
+     모아서 한 번에 복사할 수 있다. 본문 스크롤을 따라가지 않고, 화면 아래(오디오 표시줄·
+     이전/다음장 버튼) 바로 위에 항상 떠 있어야 여러 구절을 고르는 동안 위로 다시 스크롤하지
+     않고도 언제든 선택 복사를 누를 수 있다 — 그래서 wrap이 아니라 document.body에 붙인다. */
   var selBar = el("div",{class:"selection-bar", style:"display:none;"});
-  wrap.appendChild(selBar);
+  document.body.appendChild(selBar);
+  state._selBarEl = selBar;
+  function positionSelBar(){
+    var navH = (nav && nav.isConnected) ? nav.offsetHeight : 0;
+    var navBottom = (nav && nav.isConnected) ? (parseInt(nav.style.bottom, 10) || 0) : 0;
+    selBar.style.bottom = (navBottom + navH) + "px";
+  }
   var forBookSel = state.book, forChapterSel = state.chapter;
   function refreshSelBar(){
     var items = chapterHighlights(forBookSel, forChapterSel);
     clear(selBar);
     if(!items.length){ selBar.style.display = "none"; return; }
     selBar.style.display = "flex";
+    positionSelBar();
     selBar.appendChild(el("span",{},[items.length + "개 구절 선택됨"]));
     var btnRow = el("div",{class:"row", style:"gap:6px;"});
     btnRow.appendChild(el("button",{class:"btn btn-primary", onclick:function(){
@@ -1508,6 +1517,7 @@ function renderReading(){
   nav.appendChild(prevBtn); nav.appendChild(nextBtn);
   document.body.appendChild(nav);
   state._navEl = nav;
+  positionSelBar(); /* nav가 이제 생겼으니, 이미 선택된 구절이 있어 선택바가 떠 있다면 위치를 다시 맞춘다 */
 
   var shouldAutoplay = !!state._pendingAutoplay;
   state._pendingAutoplay = false;
@@ -1537,8 +1547,10 @@ function renderReading(){
       document.body.appendChild(bar);
       state._audioBarEl = bar;
       nav.style.bottom = "52px";
+      positionSelBar();
     } else if(state._audioBarEl){
       state._audioBarEl.remove(); state._audioBarEl = null;
+      positionSelBar();
     }
   });
 }
@@ -1570,6 +1582,7 @@ var _origRender = render;
 render = function(){
   if(state._audioBarEl){ state._audioBarEl.remove(); state._audioBarEl=null; }
   if(state._navEl){ state._navEl.remove(); state._navEl=null; }
+  if(state._selBarEl){ state._selBarEl.remove(); state._selBarEl=null; }
   _origRender();
 };
 

@@ -15,6 +15,7 @@
     --mark-bg:#fdf0a8; --mark-border:#d9b93f;
     --danger:#a4402f; --shadow:0 1px 2px rgba(36,31,26,.06),0 6px 16px rgba(36,31,26,.06);
     --error-bg:#fbe9e4;
+    --ctrl-border:#c9be9f; --ctrl-bg:#ffffff;
     --font-serif:"Source Serif 4",Georgia,"Noto Serif KR",serif;
     --font-ui:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
     color-scheme: light;
@@ -28,6 +29,8 @@
       --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.3);
       --danger:#e2917e;
       --error-bg:#392019;
+      --ctrl-border:#8a7a63; --ctrl-bg:#332a20;
+      color-scheme: dark;
     }
   }
   :root[data-theme="dark"]{
@@ -37,6 +40,8 @@
     --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.3);
     --danger:#e2917e;
     --error-bg:#392019;
+    --ctrl-border:#8a7a63; --ctrl-bg:#332a20;
+    color-scheme: dark;
   }
   *{box-sizing:border-box;}
   body{background:var(--bg); color:var(--text); font-family:var(--font-ui); font-variant-numeric:tabular-nums;}
@@ -49,8 +54,8 @@
   .btn:active{transform:scale(.97);}
   .btn-primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;}
   .btn-ghost{background:transparent; border-color:transparent;}
-  .icon-btn{width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:9px; border:1px solid var(--border); background:var(--surface); cursor:pointer; font-size:16px;}
-  select.version-select{border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:10px; padding:7px 8px; font-size:13px; max-width:150px;}
+  .icon-btn{min-width:38px; height:38px; padding:0 8px; display:flex; align-items:center; justify-content:center; border-radius:9px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); cursor:pointer; font-size:18px; font-weight:700; box-shadow:var(--shadow);}
+  select.version-select{border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); border-radius:10px; padding:7px 8px; font-size:13px; font-weight:600; max-width:150px; box-shadow:var(--shadow);}
   .crumbs{display:flex; align-items:center; gap:6px; margin-top:8px; font-size:12.5px; color:var(--text-dim); overflow-x:auto; white-space:nowrap;}
   .update-banner{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; padding:8px 12px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:10px; font-size:12.5px; color:var(--text);}
   .inapp-banner{display:none; flex-direction:column; align-items:flex-start; gap:8px; margin-top:8px; padding:10px 12px; background:var(--error-bg); border:1px solid var(--danger); border-radius:10px; font-size:12.5px; color:var(--text); line-height:1.6;}
@@ -123,7 +128,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-22-1">
+<meta name="app-build" content="2026-09-22-3">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -193,11 +198,20 @@ var STD_CHAPTER_COUNTS = [
 BOOKS.forEach(function(b,i){ b.stdChapters = STD_CHAPTER_COUNTS[i]; });
 function bookByNum(n){ return BOOKS.find(function(b){ return b.n===Number(n); }); }
 
-/* 알려진 버전 라벨(추정 가능한 것만; 나머지는 파일명을 그대로 사용) */
+/* 알려진 버전 라벨(추정 가능한 것만; 나머지는 파일명을 그대로 사용)
+   영어 성경은 약어를 그대로 쓰고, 한글 성경만 정식 이름으로 매칭한다.
+   (chnncv=중국어 신역본, turkish=터키어 성경 — 둘 다 한글 성경이 아니라서 매칭하지 않고 원래 코드 그대로 둠) */
 var KNOWN_LABELS = {
   "korhrv":"개역한글","kornkrv":"개역개정","engesv":"ESV","enggnt":"GNT(Good News)",
   "engniv":"NIV","engnasb":"NASB","engmsg":"The Message","engnkjv":"NKJV","engkjv":"KJV",
-  "enghcsb":"HCSB","engcev":"CEV","engisv":"ISV","engnlt":"NLT","engnrsv":"NRSV","engtniv":"TNIV"
+  "enghcsb":"HCSB","engcev":"CEV","engisv":"ISV","engnlt":"NLT","engnrsv":"NRSV","engtniv":"TNIV",
+  "ckhhrv":"개역한글 국한문판","ckhktv":"바른성경 국한문판",
+  "ckhnkrv":"개역개정 국한문판","kchnkrv":"개역개정 국한문판",
+  "korcath":"가톨릭 성경","kordob":"우리말성경","koreasy":"쉬운성경",
+  "korhchv":"한글 킹제임스 성경","korhkjv":"킹제임스 흠정역",
+  "개역한글":"개역한글판","개역개정":"개역개정판",
+  "korklb":"현대인의 성경","korktv":"바른성경","kornkcb":"공동번역 성서 개정판",
+  "kornrsv":"새번역","kortkv":"현대어성경"
 };
 var AUDIO_VERSION_HINT = "kornkrv"; /* 오디오는 개역개정 낭독 */
 

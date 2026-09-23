@@ -79,7 +79,7 @@
   .verse-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:7px;}
   .verse-row.highlight{background:var(--accent-soft); border-radius:8px; scroll-margin-top:70px;}
   .verse-view{display:flex; flex-direction:column; gap:2px;}
-  .verse-row{display:flex; gap:8px; padding:7px 2px; font-size:var(--verse-font-size,16px); line-height:1.75; border-radius:8px; cursor:pointer; align-items:flex-start;}
+  .verse-row{display:flex; gap:8px; padding:7px 2px; font-size:var(--verse-font-size,16px); line-height:1.75; border-radius:8px; cursor:pointer; align-items:flex-start; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
   .verse-row.user-mark{background:var(--mark-bg); box-shadow:inset 2px 0 0 var(--mark-border);}
   .verse-num{font-family:var(--font-serif); color:var(--accent); font-weight:700; font-size:12.5px; min-width:22px; padding-top:3px;}
   .verse-text{flex:1;}
@@ -140,7 +140,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-23-1">
+<meta name="app-build" content="2026-09-23-2">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -235,7 +235,8 @@ var LS_HIGHLIGHTS = "bible_highlights_v1";
 var LS_FONTSIZE = "bible_fontsize_v1";
 var LS_READDATES = "bible_readdates_v1";
 var LS_SEARCHRANGE = "bible_searchrange_v1"; /* 본문 검색 범위(시작/끝 책) — {from, to} */
-var LS_IMMERSIVE = "bible_immersive_v1"; /* 성경읽기 화면에서 위/아래 바를 숨기는 "넓게 보기" 모드 */
+var LS_IMMERSIVE = "bible_immersive_v1"; /* 성경읽기 화면에서 위/아래 바를 숨기는 "넓게 보기" 모드 — 우상단 버튼뿐 아니라
+  본문을 짧게 터치해도 켜고 끌 수 있다(길게 누르면 하이라이트가 되도록 구분해둠) */
 function lsGet(key, fallback){
   try{ var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; }
 }
@@ -1453,16 +1454,19 @@ function renderReading(){
      되돌리는 버튼은 숨김 대상이 아니라 항상 화면 위에 떠 있어야 하므로 document.body에 직접
      붙이고, 숨겨진 것들과 무관하게 z-index를 가장 높게 둔다. */
   if(lsGet(LS_IMMERSIVE, false)) document.body.classList.add("immersive");
+  /* 우상단 버튼과 "본문 짧게 터치" 둘 다 이 함수를 통해 켜고 끈다. */
+  function toggleImmersive(){
+    var now = !document.body.classList.contains("immersive");
+    document.body.classList.toggle("immersive", now);
+    lsSet(LS_IMMERSIVE, now);
+    immersiveBtn.textContent = now ? "⤡" : "⤢";
+    immersiveBtn.title = now ? "원래대로 보기" : "화면 넓게 보기";
+    positionSelBar(); /* 바가 사라지거나 다시 생기면서 높이가 바뀌었을 수 있으니 선택바 위치도 다시 계산 */
+    return now;
+  }
   var immersiveBtn = el("button",{class:"immersive-toggle",
     title: document.body.classList.contains("immersive") ? "원래대로 보기" : "화면 넓게 보기",
-    onclick:function(){
-      var now = !document.body.classList.contains("immersive");
-      document.body.classList.toggle("immersive", now);
-      lsSet(LS_IMMERSIVE, now);
-      immersiveBtn.textContent = now ? "⤡" : "⤢";
-      immersiveBtn.title = now ? "원래대로 보기" : "화면 넓게 보기";
-      positionSelBar(); /* 바가 사라지거나 다시 생기면서 높이가 바뀌었을 수 있으니 선택바 위치도 다시 계산 */
-    }
+    onclick:function(){ toggleImmersive(); }
   },[document.body.classList.contains("immersive") ? "⤡" : "⤢"]);
   document.body.appendChild(immersiveBtn);
   state._immersiveBtnEl = immersiveBtn;
@@ -1551,14 +1555,52 @@ function renderReading(){
         if(h) shareVerseImage(h);
       }},["🖼️"]);
       row.appendChild(imageBtn);
-      row.addEventListener("click", function(){
-        var nowOn = toggleHighlight(state.book, state.chapter, v.v, v.text);
-        row.classList.toggle("user-mark", nowOn);
-        copyBtn.style.display = nowOn ? "" : "none";
-        imageBtn.style.display = nowOn ? "" : "none";
-        if(nowOn) showToast("하이라이트 표시됨");
-        refreshSelBar();
-      });
+      /* 본문 터치 동작: 짧게 터치하면 위/아래 바를 숨기거나 다시 보이게 하고(넓게 보기 전환),
+         길게 눌러야(꾹 누르기) 하이라이트가 켜지거나 꺼진다. 스크롤하려고 손가락을 움직인
+         경우는 둘 다 무시한다. 복사/이미지 아이콘을 누른 경우도 제외한다. */
+      (function(){
+        var LONG_PRESS_MS = 500, MOVE_TOLERANCE = 10;
+        var pressTimer = null, startX = 0, startY = 0, longPressFired = false, pointerActive = false, cancelled = false;
+        function clearPressTimer(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; } }
+        function isOnIconBtn(e){ return e.target && e.target.closest && e.target.closest(".verse-copy-btn"); }
+        function doHighlightToggle(){
+          var nowOn = toggleHighlight(state.book, state.chapter, v.v, v.text);
+          row.classList.toggle("user-mark", nowOn);
+          copyBtn.style.display = nowOn ? "" : "none";
+          imageBtn.style.display = nowOn ? "" : "none";
+          if(nowOn) showToast("하이라이트 표시됨");
+          refreshSelBar();
+        }
+        row.addEventListener("pointerdown", function(e){
+          if(isOnIconBtn(e)) return;
+          if(e.button !== undefined && e.button > 0) return;
+          pointerActive = true; longPressFired = false; cancelled = false;
+          startX = e.clientX; startY = e.clientY;
+          clearPressTimer();
+          pressTimer = setTimeout(function(){
+            pressTimer = null;
+            if(!pointerActive || cancelled) return;
+            longPressFired = true;
+            doHighlightToggle();
+          }, LONG_PRESS_MS);
+        });
+        row.addEventListener("pointermove", function(e){
+          if(!pointerActive || cancelled) return;
+          if(Math.abs(e.clientX - startX) > MOVE_TOLERANCE || Math.abs(e.clientY - startY) > MOVE_TOLERANCE){
+            cancelled = true; clearPressTimer();
+          }
+        });
+        function endPress(e){
+          if(!pointerActive) return;
+          pointerActive = false;
+          clearPressTimer();
+          if(!cancelled && !longPressFired && !isOnIconBtn(e)) toggleImmersive();
+          longPressFired = false; cancelled = false;
+        }
+        row.addEventListener("pointerup", endPress);
+        row.addEventListener("pointercancel", function(){ pointerActive = false; cancelled = true; clearPressTimer(); });
+        row.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+      })();
       if(isTarget) row.id = "targetVerseRow";
       verseWrap.appendChild(row);
     });

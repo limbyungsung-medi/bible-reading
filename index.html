@@ -74,6 +74,7 @@
   .book-jump-tlabel{flex:none; font-size:11px; color:var(--text-dim); font-weight:700; min-width:24px;}
   .book-jump-chip{flex:none; font-family:var(--font-serif); font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:100px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); cursor:pointer; white-space:nowrap;}
   .book-jump-chip:active{background:var(--accent-soft); border-color:var(--accent);}
+  .book-jump-chip.active{background:var(--accent); border-color:var(--accent); color:#fff9ef;}
   .book-list{display:flex; flex-direction:column; gap:8px;}
   .book-row{display:flex; align-items:center; justify-content:space-between; padding:13px 14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; cursor:pointer; box-shadow:var(--shadow);}
   .book-row .name{font-size:15px; font-weight:600;}
@@ -118,15 +119,6 @@
   .fontsize-row .label{font-size:13px; font-weight:600;}
   .fontsize-row .controls{display:flex; align-items:center; gap:6px;}
   .fontsize-row .controls span{font-size:13px; font-weight:600; min-width:38px; text-align:center;}
-  .plan-card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:16px; box-shadow:var(--shadow);}
-  .plan-card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
-  .plan-title{font-weight:700; font-size:14px;}
-  .plan-streak{font-size:12px; color:var(--accent); font-weight:700;}
-  .plan-refs{font-family:var(--font-serif); font-size:15px; margin-bottom:10px;}
-  .plan-bar-outer{background:var(--bg); border-radius:100px; height:8px; overflow:hidden; border:1px solid var(--border);}
-  .plan-bar-inner{background:var(--accent); height:100%; border-radius:100px; transition:width .3s ease;}
-  .plan-progress-text{font-size:11px; color:var(--text-dim); margin-top:5px;}
-  .plan-done{font-size:12.5px; color:var(--accent); font-weight:700; margin-top:8px;}
   .audio-bar{position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; align-items:center; gap:10px; max-width:720px; margin:0 auto;}
   .audio-bar audio{flex:1; height:32px;}
   .chapter-nav{position:fixed; left:0; right:0; bottom:0; z-index:5; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; gap:8px; max-width:720px; margin:0 auto;}
@@ -147,7 +139,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-29-1">
+<meta name="app-build" content="2026-09-29-2">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -291,70 +283,6 @@ function bookReadCount(bookNum, totalChapters){
 }
 
 /* ---------- 통독 계획(1년, 날짜 기준) ---------- */
-/* 66권을 정해진 순서(창세기→요한계시록) 그대로 이어 붙인 뒤, 총 1189장을 365일로
-   고르게 나눈다. 교회 성도들이 같은 날짜에 같은 본문을 읽도록, 오늘 날짜(1월 1일=1일째)를
-   그대로 계획의 날짜로 쓴다 — 언제 시작했는지와 상관없이 모두가 같은 날 같은 본문을 읽는다. */
-var ALL_CHAPTERS = (function(){
-  var list = [];
-  BOOKS.forEach(function(b){
-    for(var c=1;c<=b.stdChapters;c++) list.push({book:b.n, chapter:c});
-  });
-  return list;
-})();
-var BIBLE_TOTAL_CHAPTERS = ALL_CHAPTERS.length; /* 1189 */
-var READING_PLAN_DAYS = 365;
-function planDayIndexForDate(date){
-  var start = new Date(date.getFullYear(), 0, 0);
-  var diff = date - start;
-  var oneDay = 1000 * 60 * 60 * 24;
-  var dayOfYear = Math.floor(diff / oneDay); /* 1월1일 = 1 */
-  return Math.min(dayOfYear, READING_PLAN_DAYS) - 1; /* 0-based, 윤년 12/31은 365일째 몫에 포함 */
-}
-function planChaptersForDayIndex(idx){
-  var from = Math.floor(idx * BIBLE_TOTAL_CHAPTERS / READING_PLAN_DAYS);
-  var to = Math.floor((idx+1) * BIBLE_TOTAL_CHAPTERS / READING_PLAN_DAYS);
-  return ALL_CHAPTERS.slice(from, to);
-}
-function todaysPlanChapters(){
-  return planChaptersForDayIndex(planDayIndexForDate(new Date()));
-}
-/* 오늘 읽을 본문을 "창세기 34~37장" 처럼 사람이 읽기 좋은 형태로 묶어준다 */
-function formatPlanChapters(chapterList){
-  var parts = [];
-  var i = 0;
-  while(i < chapterList.length){
-    var start = chapterList[i];
-    var end = start;
-    var j = i+1;
-    while(j < chapterList.length && chapterList[j].book === end.book && chapterList[j].chapter === end.chapter+1){
-      end = chapterList[j]; j++;
-    }
-    var book = bookByNum(start.book);
-    if(start.chapter === end.chapter) parts.push(book.ko + " " + start.chapter + "장");
-    else parts.push(book.ko + " " + start.chapter + "~" + end.chapter + "장");
-    i = j;
-  }
-  return parts.join(", ");
-}
-function overallPlanProgress(){
-  var read = 0;
-  ALL_CHAPTERS.forEach(function(c){ if(isRead(c.book, c.chapter)) read++; });
-  return {read:read, total:BIBLE_TOTAL_CHAPTERS, pct: Math.round(read / BIBLE_TOTAL_CHAPTERS * 1000) / 10};
-}
-/* 오늘(또는 아직 오늘 안 읽었다면 어제까지) 기준으로 며칠 연속 읽었는지 */
-function currentStreakDays(){
-  var d = new Date();
-  if(!readDatesMap[todayStr()]) d.setDate(d.getDate()-1); /* 오늘 아직 안 읽었으면 어제부터 거슬러 확인 */
-  var streak = 0;
-  while(true){
-    var key = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
-    if(!readDatesMap[key]) break;
-    streak++;
-    d.setDate(d.getDate()-1);
-  }
-  return streak;
-}
-
 /* ---------- 하이라이트(묵상 구절 표시) ---------- */
 /* 버전에 상관없이(개역개정/새번역 등 어느 걸 읽든) 같은 절이면 같은 표시로 남도록
    isRead와 같은 방식으로 책+장+절만으로 키를 만든다. 절 본문(text)은 나중에 모아보기 화면과
@@ -1356,67 +1284,56 @@ async function onReconnectClick(){
   }
 }
 
-function renderTodayPlanCard(){
-  var todays = todaysPlanChapters();
-  var allRead = todays.length>0 && todays.every(function(c){ return isRead(c.book,c.chapter); });
-  var progress = overallPlanProgress();
-  var streak = currentStreakDays();
-  var card = el("div",{class:"plan-card"});
-  card.appendChild(el("div",{class:"plan-card-head"},[
-    el("div",{class:"plan-title"},["📅 오늘의 통독"]),
-    streak > 0 ? el("div",{class:"plan-streak"},["🔥 " + streak + "일 연속"]) : null
-  ]));
-  card.appendChild(el("div",{class:"plan-refs"},[todays.length ? formatPlanChapters(todays) : "오늘 계획된 본문이 없어요"]));
-  var barOuter = el("div",{class:"plan-bar-outer"});
-  barOuter.appendChild(el("div",{class:"plan-bar-inner", style:"width:"+progress.pct+"%;"}));
-  card.appendChild(barOuter);
-  card.appendChild(el("div",{class:"plan-progress-text"},["전체 " + progress.pct + "% (" + progress.read + " / " + progress.total + "장)"]));
-  if(todays.length){
-    if(allRead){
-      card.appendChild(el("div",{class:"plan-done"},["오늘 본문을 다 읽었어요 ✅"]));
-    } else {
-      var btnRow = el("div",{class:"row", style:"gap:8px; margin-top:10px;"});
-      btnRow.appendChild(el("button",{class:"btn btn-primary", style:"flex:1;", onclick:function(){ goReading(todays[0].book, todays[0].chapter); }},["읽으러 가기 ›"]));
-      btnRow.appendChild(el("button",{class:"btn", style:"flex:1; font-size:12px;", onclick:function(){
-        todays.forEach(function(c){ markRead(c.book, c.chapter, true); });
-        render();
-      }},["오늘 전체 읽음 표시"]));
-      card.appendChild(btnRow);
-    }
+function categoryIndexForBook(n){
+  for(var i=0;i<BOOK_CATEGORIES.length;i++){
+    var c = BOOK_CATEGORIES[i];
+    if(n >= c.from && n <= c.to) return i;
   }
-  return card;
+  return -1;
 }
 
 function renderLetters(){
-  /* 구약(1~39권) / 신약(40~66권)으로 나누어 66권 전체를 빠짐없이 보여준다 */
+  /* 구약(1~39권) / 신약(40~66권)으로 나누어 66권 전체를 빠짐없이 보여준다.
+     맨 위는 이제 "오늘의 통독" 카드 대신 분류 칩이 차지한다 — 목회자가 설교 중
+     이 책 저 책을 오가며 찾을 때도 스크롤 없이 바로 이동할 수 있도록 하기 위함. */
   var wrap = el("div",{});
-  wrap.appendChild(renderTodayPlanCard());
   var OT = BOOKS.filter(function(b){ return b.n <= 39; });
   var NT = BOOKS.filter(function(b){ return b.n >= 40; });
 
   /* 66권을 다 스크롤하지 않고도 원하는 구간(모세오경/역사서/... )으로 바로 이동할 수 있는
-     분류 칩 — 화면 위쪽에 붙어(sticky) 계속 손닿는 곳에 남아 있는다. 창세기→요한계시록
-     순서 자체는 바뀌지 않고, 그 순서 안에서 원하는 위치로 스크롤만 대신 해주는 것이다. */
+     분류 칩 — 화면 맨 위, 헤더 바로 아래에 붙어(sticky) 66권 목록을 아무리 오르내려도
+     항상 그 자리에 남아 있는다. 창세기→요한계시록 순서 자체는 바뀌지 않고, 그 순서 안에서
+     원하는 위치로 스크롤만 대신 해주는 것이다. */
   function scrollToBook(n){
     var target = document.getElementById("book-row-" + n);
     if(!target) return;
     var headerEl = document.querySelector("header");
-    var offset = (headerEl ? headerEl.offsetHeight : 0) + (jumpBar ? jumpBar.offsetHeight : 0) + 10;
+    var offset = (headerEl ? headerEl.offsetHeight : 0) + jumpBar.offsetHeight + 10;
     var top = target.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({top: Math.max(0, top), behavior:"smooth"});
   }
   var jumpBar = el("div",{class:"book-jump-bar"});
+  var chipEls = new Array(BOOK_CATEGORIES.length);
   function buildJumpRow(testament){
     var row = el("div",{class:"book-jump-row"});
     row.appendChild(el("span",{class:"book-jump-tlabel"},[testament]));
-    BOOK_CATEGORIES.filter(function(c){ return c.testament === testament; }).forEach(function(cat){
-      row.appendChild(el("button",{class:"book-jump-chip", onclick:function(){ scrollToBook(cat.from); }},[cat.label]));
+    BOOK_CATEGORIES.forEach(function(cat, idx){
+      if(cat.testament !== testament) return;
+      var chip = el("button",{class:"book-jump-chip", onclick:function(){ scrollToBook(cat.from); setActiveChip(idx); }},[cat.label]);
+      chipEls[idx] = chip;
+      row.appendChild(chip);
     });
     return row;
   }
   jumpBar.appendChild(buildJumpRow("구약"));
   jumpBar.appendChild(buildJumpRow("신약"));
   wrap.appendChild(jumpBar);
+  /* 헤더(상단 타이틀줄) 바로 밑에 자리를 잡도록, sticky 위치를 헤더 높이만큼 내려준다.
+     (둘 다 top:0으로 두면 스크롤시 서로 겹쳐버린다) */
+  requestAnimationFrame(function(){
+    var headerEl = document.querySelector("header");
+    jumpBar.style.top = (headerEl ? headerEl.offsetHeight : 0) + "px";
+  });
 
   function renderSection(title, count, books){
     wrap.appendChild(el("div",{class:"section-title"},[title + " · " + count + "권"]));
@@ -1442,6 +1359,43 @@ function renderLetters(){
   renderSection("구약", OT.length, OT);
   renderSection("신약", NT.length, NT);
   $main.appendChild(wrap);
+
+  /* 지금 화면에 보이는 책이 어느 분류인지 칩에 표시해준다(스크롤-스파이) — 66권을
+     오르내리다가 지금 내가 어디쯤 있는지 한눈에 알 수 있어서, 설교 중 이 책 저 책을
+     오갈 때 특히 도움이 된다. 분류 칩 바로 아래(화면에서 가장 위쪽에 걸쳐 있는) 책이
+     "지금 보고 있는 책"이라고 보고, 스크롤할 때마다 다시 계산한다. */
+  function setActiveChip(idx){
+    chipEls.forEach(function(c,i){ if(c) c.classList.toggle("active", i===idx); });
+  }
+  var rows = wrap.querySelectorAll(".book-row");
+  var scrollSpyTicking = false;
+  function updateActiveChipFromScroll(){
+    scrollSpyTicking = false;
+    if(!rows.length) return;
+    var current = rows[0];
+    /* 맨 아래(요한계시록 부근)까지 스크롤하면, 남은 내용이 얼마 없어서 마지막 책의 위쪽을
+       기준선까지 끌어올릴 "공간"이 부족할 수 있다 — 그럴 땐 기준선 계산 대신 그냥 마지막
+       책을 "지금 보고 있는 책"으로 본다. */
+    var atBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 2);
+    if(atBottom){
+      current = rows[rows.length - 1];
+    } else {
+      var headerEl = document.querySelector("header");
+      var lineY = (headerEl ? headerEl.offsetHeight : 0) + jumpBar.offsetHeight + 2;
+      for(var i=0;i<rows.length;i++){
+        if(rows[i].getBoundingClientRect().top <= lineY) current = rows[i];
+        else break; /* book-row는 항상 위→아래 순서이므로, 기준선을 넘는 순간 이전 것이 정답 */
+      }
+    }
+    var idx = categoryIndexForBook(Number(current.id.replace("book-row-","")));
+    if(idx >= 0) setActiveChip(idx);
+  }
+  function onBookListScroll(){
+    if(!scrollSpyTicking){ scrollSpyTicking = true; requestAnimationFrame(updateActiveChipFromScroll); }
+  }
+  window.addEventListener("scroll", onBookListScroll, {passive:true});
+  state._bookListScrollHandler = onBookListScroll;
+  requestAnimationFrame(updateActiveChipFromScroll);
 }
 
 function renderChapters(){
@@ -1737,6 +1691,7 @@ render = function(){
   if(state._navEl){ state._navEl.remove(); state._navEl=null; }
   if(state._selBarEl){ state._selBarEl.remove(); state._selBarEl=null; }
   if(state._immersiveBtnEl){ state._immersiveBtnEl.remove(); state._immersiveBtnEl=null; }
+  if(state._bookListScrollHandler){ window.removeEventListener("scroll", state._bookListScrollHandler); state._bookListScrollHandler=null; }
   /* "넓게 보기"는 성경읽기 화면에서만 의미가 있다 — 다른 화면(책 목록 등)으로 나가면
      헤더가 다시 보여야 하니 여기서 일단 끄고, renderReading()이 저장된 설정을 보고 다시 켠다. */
   document.body.classList.remove("immersive");

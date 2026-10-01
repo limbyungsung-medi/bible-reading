@@ -157,7 +157,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-29-3">
+<meta name="app-build" content="2026-10-01-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1135,8 +1135,12 @@ function updateCrumbs(){
       parts.push(el("span",{},["›"]));
       if(state.screen === "reading"){
         parts.push(el("span",{class:"clickable", onclick:function(){ goVerses(state.book,state.chapter); }},[state.chapter+"장"]));
-        parts.push(el("span",{},["›"]));
-        parts.push(el("span",{},[state.targetVerse ? (state.targetVerse+"절") : "전체"]));
+        /* 특정 절로 들어온 경우에만 "› n절"을 붙인다(장 전체를 열었을 때 끝에 "전체"를 또 붙이면
+           맨 앞의 큰 "전체" 버튼과 헷갈리므로 생략) */
+        if(state.targetVerse){
+          parts.push(el("span",{},["›"]));
+          parts.push(el("span",{},[state.targetVerse+"절"]));
+        }
       } else {
         parts.push(el("span",{},[state.chapter+"장"]));
       }
@@ -1461,7 +1465,10 @@ function renderVerses(){
       return;
     }
     verses.forEach(function(v){
-      grid.appendChild(el("button",{class:"verse-btn", onclick:function(){ goReading(state.book,state.chapter,v.v); }},[String(v.v)]));
+      /* 1절을 고르는 건 "그 장을 처음부터 읽기"와 같으므로 특정 구절 강조(바탕색) 없이 연다.
+         2절 이상을 고르면 그 구절로 스크롤하고 바탕색으로 표시해준다. (검색 결과나 하이라이트
+         모아보기에서 1절로 들어오는 경우는 그 구절을 찾아온 것이니 그대로 강조한다.) */
+      grid.appendChild(el("button",{class:"verse-btn", onclick:function(){ goReading(state.book,state.chapter, v.v === 1 ? null : v.v); }},[String(v.v)]));
     });
   });
 }
@@ -1548,8 +1555,8 @@ function renderReading(){
       items.forEach(function(h){ toggleHighlight(h.book,h.chapter,h.verse,h.text); });
       verseWrap.querySelectorAll(".verse-row.user-mark").forEach(function(r){
         r.classList.remove("user-mark");
-        var cb = r.querySelector(".verse-copy-btn");
-        if(cb) cb.style.display = "none";
+        /* 복사(📋)와 이미지 공유(🖼️) 아이콘 둘 다 숨긴다 */
+        r.querySelectorAll(".verse-copy-btn").forEach(function(b){ b.style.display = "none"; });
       });
       refreshSelBar();
     }},["선택 해제"]));
@@ -1643,12 +1650,8 @@ function renderReading(){
       el("button",{class:"btn btn-primary", onclick:function(){ swipeToChapter(1); }},["다음 장 ›"])
     ]));
     verseWrap.appendChild(el("div",{class:"swipe-hint"},["👈 화면을 좌우로 밀어도 장이 넘어가요 👉"]));
-    /* 장을 읽으면 자동으로 읽음 표시 */
-    if(!isRead(state.book, state.chapter)){
-      markRead(state.book, state.chapter, true);
-      var cb = wrap.querySelector('input[type="checkbox"]');
-      if(cb) cb.checked = true;
-    }
+    /* 장을 열기만 해서는 읽음으로 표시하지 않는다 — 말씀을 찾으러 잠깐 들어갔다 나와도 장 색이
+       바뀌지 않도록, "읽음으로 표시"를 직접 체크했을 때만 읽음으로 기록한다. */
     if(state.targetVerse){
       var targetEl = document.getElementById("targetVerseRow");
       if(targetEl) targetEl.scrollIntoView({block:"center"});
@@ -1830,6 +1833,23 @@ function openSettingsModal(){
   /* 본문 검색은 이제 헤더의 🔍 아이콘으로 바로 열 수 있어서(더 빨리 쓸 수 있도록), 여기서는 뺐다. */
   var highlightsBtn = el("button",{class:"btn", style:"margin-top:10px; width:100%;", onclick:function(){ backdrop.remove(); openHighlightsModal(); }},["⭐ 하이라이트 모아보기"]);
   sheet.appendChild(highlightsBtn);
+  /* 예전 버전에서는 장을 열기만 해도 자동으로 읽음 표시가 됐었으므로, 그동안 쌓인 읽음 표시를
+     한 번에 지울 수 있게 한다. 실수로 누르지 않도록 두 번 눌러야 지워진다. */
+  var resetReadArmed = false;
+  var resetReadBtn = el("button",{class:"btn", style:"margin-top:6px; width:100%;", onclick:function(){
+    if(!resetReadArmed){
+      resetReadArmed = true;
+      resetReadBtn.textContent = "⚠️ 정말 모든 읽음 표시를 지울까요? 한 번 더 누르세요";
+      resetReadBtn.style.color = "var(--danger)";
+      return;
+    }
+    readMap = {};
+    lsSet(LS_READ, readMap);
+    backdrop.remove();
+    render();
+    showToast("읽음 표시를 모두 지웠어요");
+  }},["✅ 읽음 표시 모두 지우기"]);
+  sheet.appendChild(resetReadBtn);
   var reconnectBtn = el("button",{class:"btn", style:"margin-top:6px; width:100%;", onclick:function(){ backdrop.remove(); goConnectScreen(); }},["📁 다른 폴더로 다시 연결"]);
   sheet.appendChild(reconnectBtn);
   var clearBtn = el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%; font-size:12px; color:var(--danger);", onclick:function(){

@@ -49,9 +49,6 @@
   header{position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--border); padding:10px 14px;}
   .topbar{display:flex; align-items:center; gap:8px;}
   .brand{font-family:var(--font-serif); font-weight:600; font-size:16px; letter-spacing:.2px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  /* 폴더를 연결한 뒤에는 앱 이름을 숨겨서 그 자리를 버전 선택칸이 넓게 쓴다 */
-  body.connected .brand{display:none;}
-  body.connected select.version-select{flex:1; min-width:0; max-width:none;}
   select, button{font-family:inherit;}
   .btn{border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:10px; padding:8px 12px; font-size:13px; cursor:pointer;}
   .btn:active{transform:scale(.97);}
@@ -59,16 +56,12 @@
   .btn-ghost{background:transparent; border-color:transparent;}
   .icon-btn{min-width:38px; height:38px; padding:0 8px; display:flex; align-items:center; justify-content:center; border-radius:9px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); cursor:pointer; font-size:18px; font-weight:700; box-shadow:var(--shadow);}
   select.version-select{border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); border-radius:10px; padding:7px 8px; font-size:13px; font-weight:600; max-width:150px; box-shadow:var(--shadow);}
-  .crumbs{display:flex; align-items:center; gap:7px; margin-top:8px; font-size:15px; color:var(--text-dim); overflow-x:auto; white-space:nowrap;}
+  .crumbs{display:flex; align-items:center; gap:6px; margin-top:8px; font-size:12.5px; color:var(--text-dim); overflow-x:auto; white-space:nowrap;}
   .update-banner{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; padding:8px 12px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:10px; font-size:12.5px; color:var(--text);}
   .inapp-banner{display:none; flex-direction:column; align-items:flex-start; gap:8px; margin-top:8px; padding:10px 12px; background:var(--error-bg); border:1px solid var(--danger); border-radius:10px; font-size:12.5px; color:var(--text); line-height:1.6;}
   .inapp-banner .title{font-weight:700; color:var(--danger);}
   .inapp-banner .btn{margin-top:2px;}
-  .crumbs span.clickable{cursor:pointer; color:var(--accent); padding:4px 2px;}
-  /* "전체"(책 목록으로 돌아가기)는 성경을 이리저리 옮겨 다닐 때 가장 자주 누르는 곳이라, 손가락으로 쉽게
-     누를 수 있도록 알약 모양의 큰 버튼으로 만든다. */
-  .crumbs span.crumb-home{display:inline-flex; align-items:center; gap:4px; min-height:36px; padding:6px 14px; border-radius:100px; border:1.5px solid var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:15px;}
-  .crumbs span.crumb-home:active{transform:scale(.96);}
+  .crumbs span.clickable{cursor:pointer; color:var(--accent);}
   main{flex:1; padding:16px 14px 90px;}
   .center-pane{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; gap:14px; padding:20px;}
   .center-pane h1{font-size:20px; margin:0;}
@@ -81,7 +74,6 @@
   .book-jump-tlabel{flex:none; font-size:11px; color:var(--text-dim); font-weight:700; min-width:24px;}
   .book-jump-chip{flex:none; font-family:var(--font-serif); font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:100px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); cursor:pointer; white-space:nowrap;}
   .book-jump-chip:active{background:var(--accent-soft); border-color:var(--accent);}
-  .book-jump-chip.active{background:var(--accent); border-color:var(--accent); color:#fff9ef;}
   .book-list{display:flex; flex-direction:column; gap:8px;}
   .book-row{display:flex; align-items:center; justify-content:space-between; padding:13px 14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; cursor:pointer; box-shadow:var(--shadow);}
   .book-row .name{font-size:15px; font-weight:600;}
@@ -118,17 +110,6 @@
   body.immersive header, body.immersive .chapter-nav, body.immersive .audio-bar, body.immersive .selection-bar{display:none !important;}
   body.immersive main{padding:14px 14px 24px;}
   .immersive-toggle{position:fixed; top:10px; right:10px; z-index:9; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); box-shadow:var(--shadow); font-size:16px; cursor:pointer;}
-  /* 넓게 보기가 꺼져 있을 때는 이 버튼을 헤더 줄 안(⋯ 설정 버튼 왼쪽)에 넣어서, 설정 버튼을 가리지 않게 한다 */
-  header .immersive-toggle{position:static; border-radius:9px; box-shadow:var(--shadow);}
-  /* 좌우로 밀어서 장을 넘길 때 새 장이 밀려 들어오는 느낌을 준다 */
-  @keyframes swipeInNext{from{opacity:0; transform:translateX(48px);} to{opacity:1; transform:none;}}
-  @keyframes swipeInPrev{from{opacity:0; transform:translateX(-48px);} to{opacity:1; transform:none;}}
-  .swipe-in-next{animation:swipeInNext .22s ease-out;}
-  .swipe-in-prev{animation:swipeInPrev .22s ease-out;}
-  /* 장 끝에 붙는 이전/다음 장 버튼: 화면 아래에 고정하지 않고 본문을 다 읽은 뒤에만 보이게 해서 본문 창을 넓힌다 */
-  .chapter-end-nav{display:flex; gap:8px; margin:22px 0 6px;}
-  .chapter-end-nav .btn{flex:1; padding:11px 12px; font-size:14px;}
-  .swipe-hint{text-align:center; font-size:12px; color:var(--text-dim); margin-bottom:8px;}
   .highlight-item .actions{display:flex; gap:6px;}
   .highlight-item .actions button{font-size:11.5px; padding:5px 10px;}
   .selection-bar{position:fixed; left:0; right:0; z-index:7; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; background:var(--mark-bg); border-top:1px solid var(--mark-border); box-shadow:var(--shadow); font-size:12.5px; color:var(--text); max-width:720px; margin:0 auto;}
@@ -137,6 +118,15 @@
   .fontsize-row .label{font-size:13px; font-weight:600;}
   .fontsize-row .controls{display:flex; align-items:center; gap:6px;}
   .fontsize-row .controls span{font-size:13px; font-weight:600; min-width:38px; text-align:center;}
+  .plan-card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:16px; box-shadow:var(--shadow);}
+  .plan-card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+  .plan-title{font-weight:700; font-size:14px;}
+  .plan-streak{font-size:12px; color:var(--accent); font-weight:700;}
+  .plan-refs{font-family:var(--font-serif); font-size:15px; margin-bottom:10px;}
+  .plan-bar-outer{background:var(--bg); border-radius:100px; height:8px; overflow:hidden; border:1px solid var(--border);}
+  .plan-bar-inner{background:var(--accent); height:100%; border-radius:100px; transition:width .3s ease;}
+  .plan-progress-text{font-size:11px; color:var(--text-dim); margin-top:5px;}
+  .plan-done{font-size:12.5px; color:var(--accent); font-weight:700; margin-top:8px;}
   .audio-bar{position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; align-items:center; gap:10px; max-width:720px; margin:0 auto;}
   .audio-bar audio{flex:1; height:32px;}
   .chapter-nav{position:fixed; left:0; right:0; bottom:0; z-index:5; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; gap:8px; max-width:720px; margin:0 auto;}
@@ -157,7 +147,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-01-1">
+<meta name="app-build" content="2026-09-29-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -267,7 +257,6 @@ var LS_HIGHLIGHTS = "bible_highlights_v1";
 var LS_FONTSIZE = "bible_fontsize_v1";
 var LS_READDATES = "bible_readdates_v1";
 var LS_SEARCHRANGE = "bible_searchrange_v1"; /* 본문 검색 범위(시작/끝 책) — {from, to} */
-var LS_SWIPEHINT = "bible_swipehint_v1"; /* "좌우로 밀어서 장 넘기기" 안내를 몇 번 보여줬는지 */
 var LS_IMMERSIVE = "bible_immersive_v1"; /* 성경읽기 화면에서 위/아래 바를 숨기는 "넓게 보기" 모드 — 우상단 버튼뿐 아니라
   본문을 짧게 터치해도 켜고 끌 수 있다(길게 누르면 하이라이트가 되도록 구분해둠) */
 function lsGet(key, fallback){
@@ -302,6 +291,70 @@ function bookReadCount(bookNum, totalChapters){
 }
 
 /* ---------- 통독 계획(1년, 날짜 기준) ---------- */
+/* 66권을 정해진 순서(창세기→요한계시록) 그대로 이어 붙인 뒤, 총 1189장을 365일로
+   고르게 나눈다. 교회 성도들이 같은 날짜에 같은 본문을 읽도록, 오늘 날짜(1월 1일=1일째)를
+   그대로 계획의 날짜로 쓴다 — 언제 시작했는지와 상관없이 모두가 같은 날 같은 본문을 읽는다. */
+var ALL_CHAPTERS = (function(){
+  var list = [];
+  BOOKS.forEach(function(b){
+    for(var c=1;c<=b.stdChapters;c++) list.push({book:b.n, chapter:c});
+  });
+  return list;
+})();
+var BIBLE_TOTAL_CHAPTERS = ALL_CHAPTERS.length; /* 1189 */
+var READING_PLAN_DAYS = 365;
+function planDayIndexForDate(date){
+  var start = new Date(date.getFullYear(), 0, 0);
+  var diff = date - start;
+  var oneDay = 1000 * 60 * 60 * 24;
+  var dayOfYear = Math.floor(diff / oneDay); /* 1월1일 = 1 */
+  return Math.min(dayOfYear, READING_PLAN_DAYS) - 1; /* 0-based, 윤년 12/31은 365일째 몫에 포함 */
+}
+function planChaptersForDayIndex(idx){
+  var from = Math.floor(idx * BIBLE_TOTAL_CHAPTERS / READING_PLAN_DAYS);
+  var to = Math.floor((idx+1) * BIBLE_TOTAL_CHAPTERS / READING_PLAN_DAYS);
+  return ALL_CHAPTERS.slice(from, to);
+}
+function todaysPlanChapters(){
+  return planChaptersForDayIndex(planDayIndexForDate(new Date()));
+}
+/* 오늘 읽을 본문을 "창세기 34~37장" 처럼 사람이 읽기 좋은 형태로 묶어준다 */
+function formatPlanChapters(chapterList){
+  var parts = [];
+  var i = 0;
+  while(i < chapterList.length){
+    var start = chapterList[i];
+    var end = start;
+    var j = i+1;
+    while(j < chapterList.length && chapterList[j].book === end.book && chapterList[j].chapter === end.chapter+1){
+      end = chapterList[j]; j++;
+    }
+    var book = bookByNum(start.book);
+    if(start.chapter === end.chapter) parts.push(book.ko + " " + start.chapter + "장");
+    else parts.push(book.ko + " " + start.chapter + "~" + end.chapter + "장");
+    i = j;
+  }
+  return parts.join(", ");
+}
+function overallPlanProgress(){
+  var read = 0;
+  ALL_CHAPTERS.forEach(function(c){ if(isRead(c.book, c.chapter)) read++; });
+  return {read:read, total:BIBLE_TOTAL_CHAPTERS, pct: Math.round(read / BIBLE_TOTAL_CHAPTERS * 1000) / 10};
+}
+/* 오늘(또는 아직 오늘 안 읽었다면 어제까지) 기준으로 며칠 연속 읽었는지 */
+function currentStreakDays(){
+  var d = new Date();
+  if(!readDatesMap[todayStr()]) d.setDate(d.getDate()-1); /* 오늘 아직 안 읽었으면 어제부터 거슬러 확인 */
+  var streak = 0;
+  while(true){
+    var key = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+    if(!readDatesMap[key]) break;
+    streak++;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+
 /* ---------- 하이라이트(묵상 구절 표시) ---------- */
 /* 버전에 상관없이(개역개정/새번역 등 어느 걸 읽든) 같은 절이면 같은 표시로 남도록
    isRead와 같은 방식으로 책+장+절만으로 키를 만든다. 절 본문(text)은 나중에 모아보기 화면과
@@ -1126,7 +1179,7 @@ function updateCrumbs(){
   if(state.screen === "connect"){ $crumbs.style.display="none"; return; }
   $crumbs.style.display = "flex";
   var parts = [];
-  parts.push(el("span",{class:"clickable crumb-home", title:"성경 목록으로", onclick:function(){ goLetters(); }},["📚 전체"]));
+  parts.push(el("span",{class:"clickable", onclick:function(){ goLetters(); }},["전체"]));
   if(state.book){
     var b = bookByNum(state.book);
     parts.push(el("span",{},["›"]));
@@ -1135,12 +1188,8 @@ function updateCrumbs(){
       parts.push(el("span",{},["›"]));
       if(state.screen === "reading"){
         parts.push(el("span",{class:"clickable", onclick:function(){ goVerses(state.book,state.chapter); }},[state.chapter+"장"]));
-        /* 특정 절로 들어온 경우에만 "› n절"을 붙인다(장 전체를 열었을 때 끝에 "전체"를 또 붙이면
-           맨 앞의 큰 "전체" 버튼과 헷갈리므로 생략) */
-        if(state.targetVerse){
-          parts.push(el("span",{},["›"]));
-          parts.push(el("span",{},[state.targetVerse+"절"]));
-        }
+        parts.push(el("span",{},["›"]));
+        parts.push(el("span",{},[state.targetVerse ? (state.targetVerse+"절") : "전체"]));
       } else {
         parts.push(el("span",{},[state.chapter+"장"]));
       }
@@ -1170,7 +1219,6 @@ function updateHeaderForConnected(){
   if(state.version && keys.indexOf(state.version)>=0) $versionSelect.value = state.version;
   else if(keys.length){ state.version = keys[0]; $versionSelect.value = state.version; }
   $brand.textContent = "말씀나눔 성경읽기";
-  document.body.classList.add("connected");
 }
 
 $versionSelect.addEventListener("change", function(){
@@ -1183,7 +1231,6 @@ $searchIconBtn.addEventListener("click", openSearchModal);
 function goConnectScreen(){
   state.screen = "connect"; state.book=null; state.chapter=null;
   $menuBtn.style.display="none"; $searchIconBtn.style.display="none"; $versionSelect.style.display="none";
-  document.body.classList.remove("connected");
   render();
 }
 function goLetters(){ state.screen="letters"; state.book=null; state.chapter=null; render(); }
@@ -1309,56 +1356,67 @@ async function onReconnectClick(){
   }
 }
 
-function categoryIndexForBook(n){
-  for(var i=0;i<BOOK_CATEGORIES.length;i++){
-    var c = BOOK_CATEGORIES[i];
-    if(n >= c.from && n <= c.to) return i;
+function renderTodayPlanCard(){
+  var todays = todaysPlanChapters();
+  var allRead = todays.length>0 && todays.every(function(c){ return isRead(c.book,c.chapter); });
+  var progress = overallPlanProgress();
+  var streak = currentStreakDays();
+  var card = el("div",{class:"plan-card"});
+  card.appendChild(el("div",{class:"plan-card-head"},[
+    el("div",{class:"plan-title"},["📅 오늘의 통독"]),
+    streak > 0 ? el("div",{class:"plan-streak"},["🔥 " + streak + "일 연속"]) : null
+  ]));
+  card.appendChild(el("div",{class:"plan-refs"},[todays.length ? formatPlanChapters(todays) : "오늘 계획된 본문이 없어요"]));
+  var barOuter = el("div",{class:"plan-bar-outer"});
+  barOuter.appendChild(el("div",{class:"plan-bar-inner", style:"width:"+progress.pct+"%;"}));
+  card.appendChild(barOuter);
+  card.appendChild(el("div",{class:"plan-progress-text"},["전체 " + progress.pct + "% (" + progress.read + " / " + progress.total + "장)"]));
+  if(todays.length){
+    if(allRead){
+      card.appendChild(el("div",{class:"plan-done"},["오늘 본문을 다 읽었어요 ✅"]));
+    } else {
+      var btnRow = el("div",{class:"row", style:"gap:8px; margin-top:10px;"});
+      btnRow.appendChild(el("button",{class:"btn btn-primary", style:"flex:1;", onclick:function(){ goReading(todays[0].book, todays[0].chapter); }},["읽으러 가기 ›"]));
+      btnRow.appendChild(el("button",{class:"btn", style:"flex:1; font-size:12px;", onclick:function(){
+        todays.forEach(function(c){ markRead(c.book, c.chapter, true); });
+        render();
+      }},["오늘 전체 읽음 표시"]));
+      card.appendChild(btnRow);
+    }
   }
-  return -1;
+  return card;
 }
 
 function renderLetters(){
-  /* 구약(1~39권) / 신약(40~66권)으로 나누어 66권 전체를 빠짐없이 보여준다.
-     맨 위는 이제 "오늘의 통독" 카드 대신 분류 칩이 차지한다 — 목회자가 설교 중
-     이 책 저 책을 오가며 찾을 때도 스크롤 없이 바로 이동할 수 있도록 하기 위함. */
+  /* 구약(1~39권) / 신약(40~66권)으로 나누어 66권 전체를 빠짐없이 보여준다 */
   var wrap = el("div",{});
+  wrap.appendChild(renderTodayPlanCard());
   var OT = BOOKS.filter(function(b){ return b.n <= 39; });
   var NT = BOOKS.filter(function(b){ return b.n >= 40; });
 
   /* 66권을 다 스크롤하지 않고도 원하는 구간(모세오경/역사서/... )으로 바로 이동할 수 있는
-     분류 칩 — 화면 맨 위, 헤더 바로 아래에 붙어(sticky) 66권 목록을 아무리 오르내려도
-     항상 그 자리에 남아 있는다. 창세기→요한계시록 순서 자체는 바뀌지 않고, 그 순서 안에서
-     원하는 위치로 스크롤만 대신 해주는 것이다. */
+     분류 칩 — 화면 위쪽에 붙어(sticky) 계속 손닿는 곳에 남아 있는다. 창세기→요한계시록
+     순서 자체는 바뀌지 않고, 그 순서 안에서 원하는 위치로 스크롤만 대신 해주는 것이다. */
   function scrollToBook(n){
     var target = document.getElementById("book-row-" + n);
     if(!target) return;
     var headerEl = document.querySelector("header");
-    var offset = (headerEl ? headerEl.offsetHeight : 0) + jumpBar.offsetHeight + 10;
+    var offset = (headerEl ? headerEl.offsetHeight : 0) + (jumpBar ? jumpBar.offsetHeight : 0) + 10;
     var top = target.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({top: Math.max(0, top), behavior:"smooth"});
   }
   var jumpBar = el("div",{class:"book-jump-bar"});
-  var chipEls = new Array(BOOK_CATEGORIES.length);
   function buildJumpRow(testament){
     var row = el("div",{class:"book-jump-row"});
     row.appendChild(el("span",{class:"book-jump-tlabel"},[testament]));
-    BOOK_CATEGORIES.forEach(function(cat, idx){
-      if(cat.testament !== testament) return;
-      var chip = el("button",{class:"book-jump-chip", onclick:function(){ scrollToBook(cat.from); setActiveChip(idx); }},[cat.label]);
-      chipEls[idx] = chip;
-      row.appendChild(chip);
+    BOOK_CATEGORIES.filter(function(c){ return c.testament === testament; }).forEach(function(cat){
+      row.appendChild(el("button",{class:"book-jump-chip", onclick:function(){ scrollToBook(cat.from); }},[cat.label]));
     });
     return row;
   }
   jumpBar.appendChild(buildJumpRow("구약"));
   jumpBar.appendChild(buildJumpRow("신약"));
   wrap.appendChild(jumpBar);
-  /* 헤더(상단 타이틀줄) 바로 밑에 자리를 잡도록, sticky 위치를 헤더 높이만큼 내려준다.
-     (둘 다 top:0으로 두면 스크롤시 서로 겹쳐버린다) */
-  requestAnimationFrame(function(){
-    var headerEl = document.querySelector("header");
-    jumpBar.style.top = (headerEl ? headerEl.offsetHeight : 0) + "px";
-  });
 
   function renderSection(title, count, books){
     wrap.appendChild(el("div",{class:"section-title"},[title + " · " + count + "권"]));
@@ -1384,43 +1442,6 @@ function renderLetters(){
   renderSection("구약", OT.length, OT);
   renderSection("신약", NT.length, NT);
   $main.appendChild(wrap);
-
-  /* 지금 화면에 보이는 책이 어느 분류인지 칩에 표시해준다(스크롤-스파이) — 66권을
-     오르내리다가 지금 내가 어디쯤 있는지 한눈에 알 수 있어서, 설교 중 이 책 저 책을
-     오갈 때 특히 도움이 된다. 분류 칩 바로 아래(화면에서 가장 위쪽에 걸쳐 있는) 책이
-     "지금 보고 있는 책"이라고 보고, 스크롤할 때마다 다시 계산한다. */
-  function setActiveChip(idx){
-    chipEls.forEach(function(c,i){ if(c) c.classList.toggle("active", i===idx); });
-  }
-  var rows = wrap.querySelectorAll(".book-row");
-  var scrollSpyTicking = false;
-  function updateActiveChipFromScroll(){
-    scrollSpyTicking = false;
-    if(!rows.length) return;
-    var current = rows[0];
-    /* 맨 아래(요한계시록 부근)까지 스크롤하면, 남은 내용이 얼마 없어서 마지막 책의 위쪽을
-       기준선까지 끌어올릴 "공간"이 부족할 수 있다 — 그럴 땐 기준선 계산 대신 그냥 마지막
-       책을 "지금 보고 있는 책"으로 본다. */
-    var atBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 2);
-    if(atBottom){
-      current = rows[rows.length - 1];
-    } else {
-      var headerEl = document.querySelector("header");
-      var lineY = (headerEl ? headerEl.offsetHeight : 0) + jumpBar.offsetHeight + 2;
-      for(var i=0;i<rows.length;i++){
-        if(rows[i].getBoundingClientRect().top <= lineY) current = rows[i];
-        else break; /* book-row는 항상 위→아래 순서이므로, 기준선을 넘는 순간 이전 것이 정답 */
-      }
-    }
-    var idx = categoryIndexForBook(Number(current.id.replace("book-row-","")));
-    if(idx >= 0) setActiveChip(idx);
-  }
-  function onBookListScroll(){
-    if(!scrollSpyTicking){ scrollSpyTicking = true; requestAnimationFrame(updateActiveChipFromScroll); }
-  }
-  window.addEventListener("scroll", onBookListScroll, {passive:true});
-  state._bookListScrollHandler = onBookListScroll;
-  requestAnimationFrame(updateActiveChipFromScroll);
 }
 
 function renderChapters(){
@@ -1465,10 +1486,7 @@ function renderVerses(){
       return;
     }
     verses.forEach(function(v){
-      /* 1절을 고르는 건 "그 장을 처음부터 읽기"와 같으므로 특정 구절 강조(바탕색) 없이 연다.
-         2절 이상을 고르면 그 구절로 스크롤하고 바탕색으로 표시해준다. (검색 결과나 하이라이트
-         모아보기에서 1절로 들어오는 경우는 그 구절을 찾아온 것이니 그대로 강조한다.) */
-      grid.appendChild(el("button",{class:"verse-btn", onclick:function(){ goReading(state.book,state.chapter, v.v === 1 ? null : v.v); }},[String(v.v)]));
+      grid.appendChild(el("button",{class:"verse-btn", onclick:function(){ goReading(state.book,state.chapter,v.v); }},[String(v.v)]));
     });
   });
 }
@@ -1476,10 +1494,6 @@ function renderVerses(){
 function renderReading(){
   var book = bookByNum(state.book);
   var wrap = el("div",{});
-  /* 좌우로 밀어서 장을 넘긴 경우, 넘어간 방향에서 새 장이 밀려 들어오는 짧은 애니메이션 */
-  if(state._swipeDir){ wrap.className = state._swipeDir > 0 ? "swipe-in-next" : "swipe-in-prev"; state._swipeDir = 0; }
-  /* 새 장을 열면 항상 맨 위부터 보이게 한다(특정 절로 들어온 경우엔 아래에서 그 절로 스크롤됨) */
-  window.scrollTo(0, 0);
 
   /* "넓게 보기": 위(헤더)·아래(이전/다음장, 오디오, 선택바)를 다 숨기고 본문만 넓게 읽을 수
      있게 한다. 마지막으로 켜둔 상태를 기억해뒀다가 다음에 읽기 화면을 열 때도 그대로 켜준다.
@@ -1493,7 +1507,6 @@ function renderReading(){
     lsSet(LS_IMMERSIVE, now);
     immersiveBtn.textContent = now ? "⤡" : "⤢";
     immersiveBtn.title = now ? "원래대로 보기" : "화면 넓게 보기";
-    placeImmersiveBtn();
     positionSelBar(); /* 바가 사라지거나 다시 생기면서 높이가 바뀌었을 수 있으니 선택바 위치도 다시 계산 */
     return now;
   }
@@ -1501,13 +1514,7 @@ function renderReading(){
     title: document.body.classList.contains("immersive") ? "원래대로 보기" : "화면 넓게 보기",
     onclick:function(){ toggleImmersive(); }
   },[document.body.classList.contains("immersive") ? "⤡" : "⤢"]);
-  /* 넓게 보기가 꺼져 있으면 헤더 줄 안(⋯ 설정 버튼 바로 왼쪽)에 넣어 설정 버튼을 가리지 않게 하고,
-     켜져 있으면(헤더가 숨겨지므로) 화면 우상단에 떠 있게 한다. */
-  function placeImmersiveBtn(){
-    if(document.body.classList.contains("immersive")) document.body.appendChild(immersiveBtn);
-    else $menuBtn.parentNode.insertBefore(immersiveBtn, $menuBtn);
-  }
-  placeImmersiveBtn();
+  document.body.appendChild(immersiveBtn);
   state._immersiveBtnEl = immersiveBtn;
 
   var head = el("div",{class:"row", style:"justify-content:space-between; margin-bottom:10px;"},[
@@ -1534,9 +1541,9 @@ function renderReading(){
   document.body.appendChild(selBar);
   state._selBarEl = selBar;
   function positionSelBar(){
-    /* 화면 아래 고정 이전/다음장 바는 없앴으므로(좌우 밀기로 대체), 오디오바가 있으면 그 바로 위, 없으면 맨 아래 */
-    var audioBar = state._audioBarEl;
-    selBar.style.bottom = ((audioBar && audioBar.isConnected) ? audioBar.offsetHeight : 0) + "px";
+    var navH = (nav && nav.isConnected) ? nav.offsetHeight : 0;
+    var navBottom = (nav && nav.isConnected) ? (parseInt(nav.style.bottom, 10) || 0) : 0;
+    selBar.style.bottom = (navBottom + navH) + "px";
   }
   var forBookSel = state.book, forChapterSel = state.chapter;
   function refreshSelBar(){
@@ -1555,8 +1562,8 @@ function renderReading(){
       items.forEach(function(h){ toggleHighlight(h.book,h.chapter,h.verse,h.text); });
       verseWrap.querySelectorAll(".verse-row.user-mark").forEach(function(r){
         r.classList.remove("user-mark");
-        /* 복사(📋)와 이미지 공유(🖼️) 아이콘 둘 다 숨긴다 */
-        r.querySelectorAll(".verse-copy-btn").forEach(function(b){ b.style.display = "none"; });
+        var cb = r.querySelector(".verse-copy-btn");
+        if(cb) cb.style.display = "none";
       });
       refreshSelBar();
     }},["선택 해제"]));
@@ -1643,15 +1650,12 @@ function renderReading(){
       if(isTarget) row.id = "targetVerseRow";
       verseWrap.appendChild(row);
     });
-    /* 장 끝: 이전/다음 장 버튼. 예전처럼 화면 아래에 항상 붙어 있지 않고 본문 맨 끝에만 있어서,
-       읽는 동안에는 본문 창이 그만큼 넓어진다. 좌우 밀기를 모르는 분도 여기서 넘길 수 있다. */
-    verseWrap.appendChild(el("div",{class:"chapter-end-nav"},[
-      el("button",{class:"btn", onclick:function(){ swipeToChapter(-1); }},["‹ 이전 장"]),
-      el("button",{class:"btn btn-primary", onclick:function(){ swipeToChapter(1); }},["다음 장 ›"])
-    ]));
-    verseWrap.appendChild(el("div",{class:"swipe-hint"},["👈 화면을 좌우로 밀어도 장이 넘어가요 👉"]));
-    /* 장을 열기만 해서는 읽음으로 표시하지 않는다 — 말씀을 찾으러 잠깐 들어갔다 나와도 장 색이
-       바뀌지 않도록, "읽음으로 표시"를 직접 체크했을 때만 읽음으로 기록한다. */
+    /* 장을 읽으면 자동으로 읽음 표시 */
+    if(!isRead(state.book, state.chapter)){
+      markRead(state.book, state.chapter, true);
+      var cb = wrap.querySelector('input[type="checkbox"]');
+      if(cb) cb.checked = true;
+    }
     if(state.targetVerse){
       var targetEl = document.getElementById("targetVerseRow");
       if(targetEl) targetEl.scrollIntoView({block:"center"});
@@ -1660,36 +1664,13 @@ function renderReading(){
 
   /* 하단 바: 이전/다음 장 내비게이션은 바로 그려두고(오디오 유무를 기다리지 않음),
      오디오는 찾아지는 대로(캐시에서 복원된 경우 그 장의 mp3 하나만 방금 불러옴) 붙인다. */
-  /* 화면 아래에 늘 붙어 있던 이전/다음 장 버튼 대신, 화면을 좌우로 밀어서 장을 넘긴다
-     (왼쪽으로 밀면 다음 장, 오른쪽으로 밀면 이전 장 — 책장을 넘기는 방향). 세로 스크롤과
-     헷갈리지 않도록 가로로 충분히(70px 이상), 그리고 세로보다 확실히 더 많이 움직였을 때만
-     넘긴다. 오디오바·선택바·입력칸·모달 위에서 시작한 손짓은 무시한다. */
-  var swipeStart = null;
-  function onSwipeStart(e){
-    if(!e.touches || e.touches.length !== 1){ swipeStart = null; return; }
-    var t = e.target;
-    if(t && t.closest && t.closest(".audio-bar, .selection-bar, .modal-backdrop, input, textarea, select, header, audio")){ swipeStart = null; return; }
-    swipeStart = {x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now()};
-  }
-  function onSwipeEnd(e){
-    if(!swipeStart) return;
-    var start = swipeStart; swipeStart = null;
-    var touch = e.changedTouches && e.changedTouches[0];
-    if(!touch) return;
-    var dx = touch.clientX - start.x, dy = touch.clientY - start.y;
-    if(Date.now() - start.t > 900) return;
-    if(Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
-    swipeToChapter(dx < 0 ? 1 : -1);
-  }
-  document.addEventListener("touchstart", onSwipeStart, {passive:true});
-  document.addEventListener("touchend", onSwipeEnd, {passive:true});
-  state._swipeHandlers = {start:onSwipeStart, end:onSwipeEnd};
-  /* 처음 몇 번은 좌우 밀기로 장을 넘길 수 있다는 걸 알려준다 */
-  var swipeHintCount = lsGet(LS_SWIPEHINT, 0);
-  if(swipeHintCount < 2){
-    lsSet(LS_SWIPEHINT, swipeHintCount + 1);
-    setTimeout(function(){ showToast("👈 좌우로 밀어서 이전·다음 장으로 넘길 수 있어요 👉"); }, 400);
-  }
+  var nav = el("div",{class:"chapter-nav", style:"bottom:0;"});
+  var prevBtn = el("button",{class:"btn", onclick:function(){ gotoRelativeChapter(-1, false); }},["‹ 이전 장"]);
+  var nextBtn = el("button",{class:"btn btn-primary", onclick:function(){ gotoRelativeChapter(1, false); }},["다음 장 ›"]);
+  nav.appendChild(prevBtn); nav.appendChild(nextBtn);
+  document.body.appendChild(nav);
+  state._navEl = nav;
+  positionSelBar(); /* nav가 이제 생겼으니, 이미 선택된 구절이 있어 선택바가 떠 있다면 위치를 다시 맞춘다 */
 
   var shouldAutoplay = !!state._pendingAutoplay;
   state._pendingAutoplay = false;
@@ -1718,6 +1699,7 @@ function renderReading(){
       bar.appendChild(audio);
       document.body.appendChild(bar);
       state._audioBarEl = bar;
+      nav.style.bottom = "52px";
       positionSelBar();
     } else if(state._audioBarEl){
       state._audioBarEl.remove(); state._audioBarEl = null;
@@ -1727,18 +1709,6 @@ function renderReading(){
 }
 
 async function stepChapter(delta){ return gotoRelativeChapter(delta, false); }
-
-/* 좌우 밀기 / 장 끝 버튼으로 장을 넘길 때: 넘어가는 방향을 기억해 애니메이션을 주고,
-   창세기 1장에서 더 앞으로, 요한계시록 마지막 장에서 더 뒤로 가려 하면 알려준다. */
-async function swipeToChapter(delta){
-  if(delta < 0 && state.book === 1 && state.chapter === 1){ showToast("성경의 첫 장이에요"); return; }
-  if(delta > 0 && state.book === 66){
-    var lastTotal = await getChapterCount(state.version, 66);
-    if(state.chapter >= lastTotal){ showToast("성경의 마지막 장이에요"); return; }
-  }
-  state._swipeDir = delta;
-  return gotoRelativeChapter(delta, false);
-}
 
 async function gotoRelativeChapter(delta, autoplay){
   var total = await getChapterCount(state.version, state.book);
@@ -1765,14 +1735,8 @@ var _origRender = render;
 render = function(){
   if(state._audioBarEl){ state._audioBarEl.remove(); state._audioBarEl=null; }
   if(state._navEl){ state._navEl.remove(); state._navEl=null; }
-  if(state._swipeHandlers){
-    document.removeEventListener("touchstart", state._swipeHandlers.start);
-    document.removeEventListener("touchend", state._swipeHandlers.end);
-    state._swipeHandlers = null;
-  }
   if(state._selBarEl){ state._selBarEl.remove(); state._selBarEl=null; }
   if(state._immersiveBtnEl){ state._immersiveBtnEl.remove(); state._immersiveBtnEl=null; }
-  if(state._bookListScrollHandler){ window.removeEventListener("scroll", state._bookListScrollHandler); state._bookListScrollHandler=null; }
   /* "넓게 보기"는 성경읽기 화면에서만 의미가 있다 — 다른 화면(책 목록 등)으로 나가면
      헤더가 다시 보여야 하니 여기서 일단 끄고, renderReading()이 저장된 설정을 보고 다시 켠다. */
   document.body.classList.remove("immersive");
@@ -1833,23 +1797,6 @@ function openSettingsModal(){
   /* 본문 검색은 이제 헤더의 🔍 아이콘으로 바로 열 수 있어서(더 빨리 쓸 수 있도록), 여기서는 뺐다. */
   var highlightsBtn = el("button",{class:"btn", style:"margin-top:10px; width:100%;", onclick:function(){ backdrop.remove(); openHighlightsModal(); }},["⭐ 하이라이트 모아보기"]);
   sheet.appendChild(highlightsBtn);
-  /* 예전 버전에서는 장을 열기만 해도 자동으로 읽음 표시가 됐었으므로, 그동안 쌓인 읽음 표시를
-     한 번에 지울 수 있게 한다. 실수로 누르지 않도록 두 번 눌러야 지워진다. */
-  var resetReadArmed = false;
-  var resetReadBtn = el("button",{class:"btn", style:"margin-top:6px; width:100%;", onclick:function(){
-    if(!resetReadArmed){
-      resetReadArmed = true;
-      resetReadBtn.textContent = "⚠️ 정말 모든 읽음 표시를 지울까요? 한 번 더 누르세요";
-      resetReadBtn.style.color = "var(--danger)";
-      return;
-    }
-    readMap = {};
-    lsSet(LS_READ, readMap);
-    backdrop.remove();
-    render();
-    showToast("읽음 표시를 모두 지웠어요");
-  }},["✅ 읽음 표시 모두 지우기"]);
-  sheet.appendChild(resetReadBtn);
   var reconnectBtn = el("button",{class:"btn", style:"margin-top:6px; width:100%;", onclick:function(){ backdrop.remove(); goConnectScreen(); }},["📁 다른 폴더로 다시 연결"]);
   sheet.appendChild(reconnectBtn);
   var clearBtn = el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%; font-size:12px; color:var(--danger);", onclick:function(){

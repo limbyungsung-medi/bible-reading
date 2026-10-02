@@ -49,6 +49,9 @@
   header{position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--border); padding:10px 14px;}
   .topbar{display:flex; align-items:center; gap:8px;}
   .brand{font-family:var(--font-serif); font-weight:600; font-size:16px; letter-spacing:.2px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* 폴더를 연결한 뒤에는 앱 이름을 숨겨서 그 자리를 버전 선택칸이 넓게 쓴다 */
+  body.connected .brand{display:none;}
+  body.connected select.version-select{flex:1; min-width:0; max-width:none;}
   select, button{font-family:inherit;}
   .btn{border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:10px; padding:8px 12px; font-size:13px; cursor:pointer;}
   .btn:active{transform:scale(.97);}
@@ -56,12 +59,16 @@
   .btn-ghost{background:transparent; border-color:transparent;}
   .icon-btn{min-width:38px; height:38px; padding:0 8px; display:flex; align-items:center; justify-content:center; border-radius:9px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); cursor:pointer; font-size:18px; font-weight:700; box-shadow:var(--shadow);}
   select.version-select{border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); border-radius:10px; padding:7px 8px; font-size:13px; font-weight:600; max-width:150px; box-shadow:var(--shadow);}
-  .crumbs{display:flex; align-items:center; gap:6px; margin-top:8px; font-size:12.5px; color:var(--text-dim); overflow-x:auto; white-space:nowrap;}
+  .crumbs{display:flex; align-items:center; gap:7px; margin-top:8px; font-size:15px; color:var(--text-dim); overflow-x:auto; white-space:nowrap;}
   .update-banner{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; padding:8px 12px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:10px; font-size:12.5px; color:var(--text);}
   .inapp-banner{display:none; flex-direction:column; align-items:flex-start; gap:8px; margin-top:8px; padding:10px 12px; background:var(--error-bg); border:1px solid var(--danger); border-radius:10px; font-size:12.5px; color:var(--text); line-height:1.6;}
   .inapp-banner .title{font-weight:700; color:var(--danger);}
   .inapp-banner .btn{margin-top:2px;}
-  .crumbs span.clickable{cursor:pointer; color:var(--accent);}
+  .crumbs span.clickable{cursor:pointer; color:var(--accent); padding:4px 2px;}
+  /* "전체"(책 목록으로 돌아가기)는 성경을 이리저리 옮겨 다닐 때 가장 자주 누르는 곳이라, 손가락으로 쉽게
+     누를 수 있도록 알약 모양의 큰 버튼으로 만든다. */
+  .crumbs span.crumb-home{display:inline-flex; align-items:center; gap:4px; min-height:36px; padding:6px 14px; border-radius:100px; border:1.5px solid var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:15px;}
+  .crumbs span.crumb-home:active{transform:scale(.96);}
   main{flex:1; padding:16px 14px 90px;}
   .center-pane{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; gap:14px; padding:20px;}
   .center-pane h1{font-size:20px; margin:0;}
@@ -74,6 +81,7 @@
   .book-jump-tlabel{flex:none; font-size:11px; color:var(--text-dim); font-weight:700; min-width:24px;}
   .book-jump-chip{flex:none; font-family:var(--font-serif); font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:100px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); cursor:pointer; white-space:nowrap;}
   .book-jump-chip:active{background:var(--accent-soft); border-color:var(--accent);}
+  .book-jump-chip.active{background:var(--accent); border-color:var(--accent); color:#fff9ef;}
   .book-list{display:flex; flex-direction:column; gap:8px;}
   .book-row{display:flex; align-items:center; justify-content:space-between; padding:13px 14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; cursor:pointer; box-shadow:var(--shadow);}
   .book-row .name{font-size:15px; font-weight:600;}
@@ -110,6 +118,17 @@
   body.immersive header, body.immersive .chapter-nav, body.immersive .audio-bar, body.immersive .selection-bar{display:none !important;}
   body.immersive main{padding:14px 14px 24px;}
   .immersive-toggle{position:fixed; top:10px; right:10px; z-index:9; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); box-shadow:var(--shadow); font-size:16px; cursor:pointer;}
+  /* 넓게 보기가 꺼져 있을 때는 이 버튼을 헤더 줄 안(⋯ 설정 버튼 왼쪽)에 넣어서, 설정 버튼을 가리지 않게 한다 */
+  header .immersive-toggle{position:static; border-radius:9px; box-shadow:var(--shadow);}
+  /* 좌우로 밀어서 장을 넘길 때 새 장이 밀려 들어오는 느낌을 준다 */
+  @keyframes swipeInNext{from{opacity:0; transform:translateX(48px);} to{opacity:1; transform:none;}}
+  @keyframes swipeInPrev{from{opacity:0; transform:translateX(-48px);} to{opacity:1; transform:none;}}
+  .swipe-in-next{animation:swipeInNext .22s ease-out;}
+  .swipe-in-prev{animation:swipeInPrev .22s ease-out;}
+  /* 장 끝에 붙는 이전/다음 장 버튼: 화면 아래에 고정하지 않고 본문을 다 읽은 뒤에만 보이게 해서 본문 창을 넓힌다 */
+  .chapter-end-nav{display:flex; gap:8px; margin:22px 0 6px;}
+  .chapter-end-nav .btn{flex:1; padding:11px 12px; font-size:14px;}
+  .swipe-hint{text-align:center; font-size:12px; color:var(--text-dim); margin-bottom:8px;}
   .highlight-item .actions{display:flex; gap:6px;}
   .highlight-item .actions button{font-size:11.5px; padding:5px 10px;}
   .selection-bar{position:fixed; left:0; right:0; z-index:7; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; background:var(--mark-bg); border-top:1px solid var(--mark-border); box-shadow:var(--shadow); font-size:12.5px; color:var(--text); max-width:720px; margin:0 auto;}
@@ -118,15 +137,6 @@
   .fontsize-row .label{font-size:13px; font-weight:600;}
   .fontsize-row .controls{display:flex; align-items:center; gap:6px;}
   .fontsize-row .controls span{font-size:13px; font-weight:600; min-width:38px; text-align:center;}
-  .plan-card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:16px; box-shadow:var(--shadow);}
-  .plan-card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
-  .plan-title{font-weight:700; font-size:14px;}
-  .plan-streak{font-size:12px; color:var(--accent); font-weight:700;}
-  .plan-refs{font-family:var(--font-serif); font-size:15px; margin-bottom:10px;}
-  .plan-bar-outer{background:var(--bg); border-radius:100px; height:8px; overflow:hidden; border:1px solid var(--border);}
-  .plan-bar-inner{background:var(--accent); height:100%; border-radius:100px; transition:width .3s ease;}
-  .plan-progress-text{font-size:11px; color:var(--text-dim); margin-top:5px;}
-  .plan-done{font-size:12.5px; color:var(--accent); font-weight:700; margin-top:8px;}
   .audio-bar{position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; align-items:center; gap:10px; max-width:720px; margin:0 auto;}
   .audio-bar audio{flex:1; height:32px;}
   .chapter-nav{position:fixed; left:0; right:0; bottom:0; z-index:5; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; gap:8px; max-width:720px; margin:0 auto;}
@@ -141,13 +151,24 @@
   .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:20; display:flex; align-items:flex-end; justify-content:center;}
   .modal-sheet{background:var(--surface); width:100%; max-width:720px; border-radius:16px 16px 0 0; padding:16px; max-height:78vh; overflow-y:auto;}
   .modal-sheet h3{margin:0 0 12px; font-size:15px;}
+  /* 사용설명서: 어르신들도 읽기 편하게 글자를 조금 크게, 항목별로 접었다 펼 수 있게 */
+  .modal-sheet.manual-sheet{max-height:90vh;}
+  .manual-intro{font-size:14px; color:var(--text-dim); line-height:1.7; margin:0 0 12px;}
+  .manual-sec{border:1px solid var(--border); border-radius:12px; margin-bottom:8px; background:var(--bg);}
+  .manual-sec summary{cursor:pointer; padding:13px 14px; font-size:15.5px; font-weight:700; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .manual-sec summary::-webkit-details-marker{display:none;}
+  .manual-sec summary::after{content:"▾"; color:var(--text-dim); font-size:14px; transition:transform .15s;}
+  .manual-sec[open] summary::after{transform:rotate(180deg);}
+  .manual-sec ol, .manual-sec ul{margin:0; padding:0 16px 14px 34px; font-size:14.5px; line-height:1.75;}
+  .manual-sec li{margin-bottom:6px;}
+  .manual-sec b{color:var(--accent);}
   .spinner{width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
   .row{display:flex; align-items:center; gap:8px;}
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-09-29-1">
+<meta name="app-build" content="2026-10-02-2">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -257,6 +278,7 @@ var LS_HIGHLIGHTS = "bible_highlights_v1";
 var LS_FONTSIZE = "bible_fontsize_v1";
 var LS_READDATES = "bible_readdates_v1";
 var LS_SEARCHRANGE = "bible_searchrange_v1"; /* 본문 검색 범위(시작/끝 책) — {from, to} */
+var LS_SWIPEHINT = "bible_swipehint_v1"; /* "좌우로 밀어서 장 넘기기" 안내를 몇 번 보여줬는지 */
 var LS_IMMERSIVE = "bible_immersive_v1"; /* 성경읽기 화면에서 위/아래 바를 숨기는 "넓게 보기" 모드 — 우상단 버튼뿐 아니라
   본문을 짧게 터치해도 켜고 끌 수 있다(길게 누르면 하이라이트가 되도록 구분해둠) */
 function lsGet(key, fallback){
@@ -291,70 +313,6 @@ function bookReadCount(bookNum, totalChapters){
 }
 
 /* ---------- 통독 계획(1년, 날짜 기준) ---------- */
-/* 66권을 정해진 순서(창세기→요한계시록) 그대로 이어 붙인 뒤, 총 1189장을 365일로
-   고르게 나눈다. 교회 성도들이 같은 날짜에 같은 본문을 읽도록, 오늘 날짜(1월 1일=1일째)를
-   그대로 계획의 날짜로 쓴다 — 언제 시작했는지와 상관없이 모두가 같은 날 같은 본문을 읽는다. */
-var ALL_CHAPTERS = (function(){
-  var list = [];
-  BOOKS.forEach(function(b){
-    for(var c=1;c<=b.stdChapters;c++) list.push({book:b.n, chapter:c});
-  });
-  return list;
-})();
-var BIBLE_TOTAL_CHAPTERS = ALL_CHAPTERS.length; /* 1189 */
-var READING_PLAN_DAYS = 365;
-function planDayIndexForDate(date){
-  var start = new Date(date.getFullYear(), 0, 0);
-  var diff = date - start;
-  var oneDay = 1000 * 60 * 60 * 24;
-  var dayOfYear = Math.floor(diff / oneDay); /* 1월1일 = 1 */
-  return Math.min(dayOfYear, READING_PLAN_DAYS) - 1; /* 0-based, 윤년 12/31은 365일째 몫에 포함 */
-}
-function planChaptersForDayIndex(idx){
-  var from = Math.floor(idx * BIBLE_TOTAL_CHAPTERS / READING_PLAN_DAYS);
-  var to = Math.floor((idx+1) * BIBLE_TOTAL_CHAPTERS / READING_PLAN_DAYS);
-  return ALL_CHAPTERS.slice(from, to);
-}
-function todaysPlanChapters(){
-  return planChaptersForDayIndex(planDayIndexForDate(new Date()));
-}
-/* 오늘 읽을 본문을 "창세기 34~37장" 처럼 사람이 읽기 좋은 형태로 묶어준다 */
-function formatPlanChapters(chapterList){
-  var parts = [];
-  var i = 0;
-  while(i < chapterList.length){
-    var start = chapterList[i];
-    var end = start;
-    var j = i+1;
-    while(j < chapterList.length && chapterList[j].book === end.book && chapterList[j].chapter === end.chapter+1){
-      end = chapterList[j]; j++;
-    }
-    var book = bookByNum(start.book);
-    if(start.chapter === end.chapter) parts.push(book.ko + " " + start.chapter + "장");
-    else parts.push(book.ko + " " + start.chapter + "~" + end.chapter + "장");
-    i = j;
-  }
-  return parts.join(", ");
-}
-function overallPlanProgress(){
-  var read = 0;
-  ALL_CHAPTERS.forEach(function(c){ if(isRead(c.book, c.chapter)) read++; });
-  return {read:read, total:BIBLE_TOTAL_CHAPTERS, pct: Math.round(read / BIBLE_TOTAL_CHAPTERS * 1000) / 10};
-}
-/* 오늘(또는 아직 오늘 안 읽었다면 어제까지) 기준으로 며칠 연속 읽었는지 */
-function currentStreakDays(){
-  var d = new Date();
-  if(!readDatesMap[todayStr()]) d.setDate(d.getDate()-1); /* 오늘 아직 안 읽었으면 어제부터 거슬러 확인 */
-  var streak = 0;
-  while(true){
-    var key = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
-    if(!readDatesMap[key]) break;
-    streak++;
-    d.setDate(d.getDate()-1);
-  }
-  return streak;
-}
-
 /* ---------- 하이라이트(묵상 구절 표시) ---------- */
 /* 버전에 상관없이(개역개정/새번역 등 어느 걸 읽든) 같은 절이면 같은 표시로 남도록
    isRead와 같은 방식으로 책+장+절만으로 키를 만든다. 절 본문(text)은 나중에 모아보기 화면과
@@ -720,30 +678,45 @@ function versionKeyCompare(a, b){
   return la.localeCompare(lb, "ko");
 }
 
+/* 파일 경로 하나를 보고 성경 본문(.lfa)인지, 오디오(mp3 폴더 안의 .mp3)인지 판단한다.
+   - 폴더 이름은 따지지 않는다: 압축을 풀 때 휴대폰이 같은 이름이 있으면 "bible(1)"처럼 바꿔
+     만들기도 하는데, 이름을 bible로 고치지 않아도 그대로 연결되도록.
+   - 몇 단계 안쪽에 있어도 찾는다: bible(1) 안에 bible 폴더가 또 있거나, 그 바깥 폴더를
+     골라도 .lfa 파일과 mp3 폴더를 찾아서 연결한다.
+   - 오디오는 경로 중간 어딘가에 "mp3" 폴더가 있고 파일이 .mp3이면 된다(mp3 폴더 밑에
+     kornkrv_hs 같은 하위 폴더가 몇 단계 더 있어도 마지막 파일명만 보고 매칭). */
+function classifyBiblePath(relPath){
+  var parts = String(relPath).replace(/\\/g,"/").split("/").filter(Boolean);
+  if(!parts.length) return null;
+  var fname = parts[parts.length-1];
+  var dirs = parts.slice(0, -1);
+  if(/\.mp3$/i.test(fname)){
+    for(var i=0;i<dirs.length;i++){ if(/^mp3$/i.test(dirs[i])) return {type:"mp3", name:fname.toLowerCase()}; }
+    return null;
+  }
+  if(/\.lfa$/i.test(fname)){
+    /* mp3 폴더 안에 잘못 들어간 .lfa 같은 건 무시 */
+    for(var j=0;j<dirs.length;j++){ if(/^mp3$/i.test(dirs[j])) return null; }
+    var key = fname.replace(/\.lfa$/i,"");
+    return {type:"lfa", key:key.toLowerCase(), displayName:key, depth:dirs.length};
+  }
+  return null;
+}
+
 function indexFilesFromList(fileList){
-  /* fileList: array of {name, relPath, file} or {name, relPath, handle} where relPath is like
-     "bible/korhrv.lfa" or "bible/mp3/01_1.mp3" — 실제로는 mp3 폴더 밑에 버전별 하위 폴더
-     (예: mp3/kornkrv_hs/01_1.mp3)가 하나 더 있을 수 있어서, "mp3" 다음에 몇 단계가 더 있든
-     마지막 항목(파일명)만 보고 매칭한다. mp3 항목은 file 대신 handle(FileSystemFileHandle)일
-     수 있는데, 이건 scanDirectoryHandle()이 오디오를 미리 안 읽고 지연 로딩하기 때문이다
-     — item.file || item.handle로 둘 다 받아서 getAudioFile()에서 필요할 때 마저 읽는다. */
+  /* fileList: array of {name, relPath, file} or {name, relPath, handle}. mp3 항목은 file 대신
+     handle(FileSystemFileHandle)일 수 있는데, 이건 scanDirectoryHandle()이 오디오를 미리 안 읽고
+     지연 로딩하기 때문이다 — item.file || item.handle로 둘 다 받아서 getAudioFile()에서 필요할 때
+     마저 읽는다. 같은 번역본(.lfa)이 여러 폴더에 있으면 가장 바깥(얕은) 쪽 하나만 쓴다. */
   var lfa = {}, mp3 = {};
   fileList.forEach(function(item){
-    var rel = item.relPath.replace(/\\/g,"/");
-    var parts = rel.split("/").filter(Boolean);
-    /* 루트 폴더명을 제거: 첫 세그먼트가 폴더명이면 스킵 */
-    if(parts.length >= 2){
-      var inner = parts.slice(1); /* remove top folder name */
-      if(inner.length === 1){
-        var fname = inner[0];
-        if(/\.lfa$/i.test(fname)){
-          var key = fname.replace(/\.lfa$/i,"");
-          if(!(key.toLowerCase() in lfa)) lfa[key.toLowerCase()] = {displayName:key, file:item.file};
-        }
-      } else if(inner.length >= 2 && /^mp3$/i.test(inner[0])){
-        var mfname = inner[inner.length-1];
-        if(/\.mp3$/i.test(mfname)) mp3[mfname.toLowerCase()] = item.file || item.handle;
-      }
+    var c = classifyBiblePath(item.relPath || item.name || "");
+    if(!c) return;
+    if(c.type === "lfa"){
+      var prev = lfa[c.key];
+      if(!prev || c.depth < prev.depth) lfa[c.key] = {displayName:c.displayName, file:item.file, depth:c.depth};
+    } else if(c.type === "mp3"){
+      if(!(c.name in mp3)) mp3[c.name] = item.file || item.handle;
     }
   });
   return {lfa:lfa, mp3:mp3};
@@ -927,7 +900,9 @@ function cacheFilesToIDB(rawFiles){
         var tx = db.transaction(IDB_FILES_STORE, "readwrite");
         var store = tx.objectStore(IDB_FILES_STORE);
         store.clear();
-        rawFiles.forEach(function(item){ store.put(item, item.relPath); });
+        /* 성경 본문(.lfa)과 mp3 폴더의 오디오만 저장한다 — 실수로 다른 파일이 섞인 더 큰 폴더를
+           골라도 쓸데없는 파일까지 기기에 복사하지 않도록 */
+        rawFiles.forEach(function(item){ if(classifyBiblePath(item.relPath)) store.put(item, item.relPath); });
         tx.oncomplete = function(){ resolve(true); };
         tx.onerror = function(){ resolve(false); };
       }catch(e){ resolve(false); }
@@ -982,16 +957,13 @@ async function tryRestoreFromFileCache(){
     var lfaRawFiles = [];
     var mp3LazyIndex = {};
     for(var i=0;i<keys.length;i++){
-      var relPath = String(keys[i]).replace(/\\/g,"/");
-      var parts = relPath.split("/").filter(Boolean);
-      if(parts.length < 2) continue;
-      var inner = parts.slice(1);
-      if(inner.length === 1 && /\.lfa$/i.test(inner[0])){
+      var c = classifyBiblePath(keys[i]);
+      if(!c) continue;
+      if(c.type === "lfa"){
         var item = await idbGet(keys[i], IDB_FILES_STORE);
         if(item) lfaRawFiles.push(item);
-      } else if(inner.length >= 2 && /^mp3$/i.test(inner[0])){
-        var mfname2 = inner[inner.length-1];
-        if(/\.mp3$/i.test(mfname2)) mp3LazyIndex[mfname2.toLowerCase()] = keys[i];
+      } else if(c.type === "mp3"){
+        if(!(c.name in mp3LazyIndex)) mp3LazyIndex[c.name] = keys[i];
       }
     }
     if(!lfaRawFiles.length) return {status:"none"};
@@ -1179,7 +1151,7 @@ function updateCrumbs(){
   if(state.screen === "connect"){ $crumbs.style.display="none"; return; }
   $crumbs.style.display = "flex";
   var parts = [];
-  parts.push(el("span",{class:"clickable", onclick:function(){ goLetters(); }},["전체"]));
+  parts.push(el("span",{class:"clickable crumb-home", title:"성경 목록으로", onclick:function(){ goLetters(); }},["📚 전체"]));
   if(state.book){
     var b = bookByNum(state.book);
     parts.push(el("span",{},["›"]));
@@ -1188,8 +1160,12 @@ function updateCrumbs(){
       parts.push(el("span",{},["›"]));
       if(state.screen === "reading"){
         parts.push(el("span",{class:"clickable", onclick:function(){ goVerses(state.book,state.chapter); }},[state.chapter+"장"]));
-        parts.push(el("span",{},["›"]));
-        parts.push(el("span",{},[state.targetVerse ? (state.targetVerse+"절") : "전체"]));
+        /* 특정 절로 들어온 경우에만 "› n절"을 붙인다(장 전체를 열었을 때 끝에 "전체"를 또 붙이면
+           맨 앞의 큰 "전체" 버튼과 헷갈리므로 생략) */
+        if(state.targetVerse){
+          parts.push(el("span",{},["›"]));
+          parts.push(el("span",{},[state.targetVerse+"절"]));
+        }
       } else {
         parts.push(el("span",{},[state.chapter+"장"]));
       }
@@ -1219,6 +1195,7 @@ function updateHeaderForConnected(){
   if(state.version && keys.indexOf(state.version)>=0) $versionSelect.value = state.version;
   else if(keys.length){ state.version = keys[0]; $versionSelect.value = state.version; }
   $brand.textContent = "말씀나눔 성경읽기";
+  document.body.classList.add("connected");
 }
 
 $versionSelect.addEventListener("change", function(){
@@ -1231,6 +1208,7 @@ $searchIconBtn.addEventListener("click", openSearchModal);
 function goConnectScreen(){
   state.screen = "connect"; state.book=null; state.chapter=null;
   $menuBtn.style.display="none"; $searchIconBtn.style.display="none"; $versionSelect.style.display="none";
+  document.body.classList.remove("connected");
   render();
 }
 function goLetters(){ state.screen="letters"; state.book=null; state.chapter=null; render(); }
@@ -1266,7 +1244,7 @@ function renderConnect(){
     var steps = el("div",{class:"setup-steps"},[
       el("div",{},[el("b",{},["1."])," bible 폴더 안에 .lfa 성경 파일들을 넣습니다"]),
       el("div",{},[el("b",{},["2."])," bible 폴더 안에 MP3 폴더(오디오)를 넣습니다"]),
-      el("div",{},[el("b",{},["3."])," 아래 버튼으로 bible 폴더를 선택하세요"])
+      el("div",{},[el("b",{},["3."])," 아래 버튼으로 bible 폴더를 선택하세요 (bible(1)처럼 이름이 달라도 괜찮아요)"])
     ]);
     wrap.appendChild(steps);
     var btn = el("button",{class:"btn btn-primary", style:"padding:12px 22px;font-size:14px;", onclick:onConnectClick},["📁 bible 폴더 연결하기"]);
@@ -1274,6 +1252,7 @@ function renderConnect(){
     wrap.appendChild(el("p",{style:"font-size:11.5px; color:var(--text-dim); max-width:320px;"},[
       "한 번 연결하면 다음부터는 자동으로 열려요. (처음 연결할 때 자료 양이 많으면 기기에 저장하느라 잠깐 시간이 걸릴 수 있어요)"
     ]));
+    wrap.appendChild(el("button",{class:"btn btn-ghost", style:"font-size:13px; text-decoration:underline;", onclick:openManualModal},["📖 사용설명서 보기"]));
   }
   var errBox = el("div",{class:"error-box", id:"connectError", style:"display:none;"});
   wrap.appendChild(errBox);
@@ -1299,7 +1278,7 @@ async function onConnectClick(){
     }
     var ok = applyScannedFiles(files);
     if(!ok){
-      errBox.textContent = "bible 폴더 안에서 .lfa 파일을 찾지 못했어요. 폴더 구조를 확인해주세요.";
+      errBox.textContent = "고른 폴더에서 성경 자료(.lfa 파일)를 찾지 못했어요. bible.zip 압축을 먼저 푼 다음, 압축을 풀어서 생긴 폴더(이름이 bible 또는 bible(1) 등)를 골라주세요.";
       errBox.style.display = "block";
       return;
     }
@@ -1343,7 +1322,7 @@ async function onReconnectClick(){
     var files = await reRequestPermission(state._pendingReconnectHandle);
     var ok = applyScannedFiles(files);
     if(!ok){
-      errBox.textContent = "bible 폴더 안에서 .lfa 파일을 찾지 못했어요. 폴더 구조를 확인해주세요.";
+      errBox.textContent = "고른 폴더에서 성경 자료(.lfa 파일)를 찾지 못했어요. bible.zip 압축을 먼저 푼 다음, 압축을 풀어서 생긴 폴더(이름이 bible 또는 bible(1) 등)를 골라주세요.";
       errBox.style.display = "block";
       return;
     }
@@ -1356,67 +1335,68 @@ async function onReconnectClick(){
   }
 }
 
-function renderTodayPlanCard(){
-  var todays = todaysPlanChapters();
-  var allRead = todays.length>0 && todays.every(function(c){ return isRead(c.book,c.chapter); });
-  var progress = overallPlanProgress();
-  var streak = currentStreakDays();
-  var card = el("div",{class:"plan-card"});
-  card.appendChild(el("div",{class:"plan-card-head"},[
-    el("div",{class:"plan-title"},["📅 오늘의 통독"]),
-    streak > 0 ? el("div",{class:"plan-streak"},["🔥 " + streak + "일 연속"]) : null
-  ]));
-  card.appendChild(el("div",{class:"plan-refs"},[todays.length ? formatPlanChapters(todays) : "오늘 계획된 본문이 없어요"]));
-  var barOuter = el("div",{class:"plan-bar-outer"});
-  barOuter.appendChild(el("div",{class:"plan-bar-inner", style:"width:"+progress.pct+"%;"}));
-  card.appendChild(barOuter);
-  card.appendChild(el("div",{class:"plan-progress-text"},["전체 " + progress.pct + "% (" + progress.read + " / " + progress.total + "장)"]));
-  if(todays.length){
-    if(allRead){
-      card.appendChild(el("div",{class:"plan-done"},["오늘 본문을 다 읽었어요 ✅"]));
-    } else {
-      var btnRow = el("div",{class:"row", style:"gap:8px; margin-top:10px;"});
-      btnRow.appendChild(el("button",{class:"btn btn-primary", style:"flex:1;", onclick:function(){ goReading(todays[0].book, todays[0].chapter); }},["읽으러 가기 ›"]));
-      btnRow.appendChild(el("button",{class:"btn", style:"flex:1; font-size:12px;", onclick:function(){
-        todays.forEach(function(c){ markRead(c.book, c.chapter, true); });
-        render();
-      }},["오늘 전체 읽음 표시"]));
-      card.appendChild(btnRow);
-    }
+function categoryIndexForBook(n){
+  for(var i=0;i<BOOK_CATEGORIES.length;i++){
+    var c = BOOK_CATEGORIES[i];
+    if(n >= c.from && n <= c.to) return i;
   }
-  return card;
+  return -1;
 }
 
 function renderLetters(){
-  /* 구약(1~39권) / 신약(40~66권)으로 나누어 66권 전체를 빠짐없이 보여준다 */
+  /* 구약(1~39권) / 신약(40~66권)으로 나누어 66권 전체를 빠짐없이 보여준다.
+     맨 위는 이제 "오늘의 통독" 카드 대신 분류 칩이 차지한다 — 목회자가 설교 중
+     이 책 저 책을 오가며 찾을 때도 스크롤 없이 바로 이동할 수 있도록 하기 위함. */
   var wrap = el("div",{});
-  wrap.appendChild(renderTodayPlanCard());
   var OT = BOOKS.filter(function(b){ return b.n <= 39; });
   var NT = BOOKS.filter(function(b){ return b.n >= 40; });
 
   /* 66권을 다 스크롤하지 않고도 원하는 구간(모세오경/역사서/... )으로 바로 이동할 수 있는
-     분류 칩 — 화면 위쪽에 붙어(sticky) 계속 손닿는 곳에 남아 있는다. 창세기→요한계시록
-     순서 자체는 바뀌지 않고, 그 순서 안에서 원하는 위치로 스크롤만 대신 해주는 것이다. */
+     분류 칩 — 화면 맨 위, 헤더 바로 아래에 붙어(sticky) 66권 목록을 아무리 오르내려도
+     항상 그 자리에 남아 있는다. 창세기→요한계시록 순서 자체는 바뀌지 않고, 그 순서 안에서
+     원하는 위치로 스크롤만 대신 해주는 것이다. */
   function scrollToBook(n){
     var target = document.getElementById("book-row-" + n);
     if(!target) return;
     var headerEl = document.querySelector("header");
-    var offset = (headerEl ? headerEl.offsetHeight : 0) + (jumpBar ? jumpBar.offsetHeight : 0) + 10;
+    var offset = (headerEl ? headerEl.offsetHeight : 0) + jumpBar.offsetHeight + 10;
     var top = target.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({top: Math.max(0, top), behavior:"smooth"});
   }
   var jumpBar = el("div",{class:"book-jump-bar"});
+  var chipEls = new Array(BOOK_CATEGORIES.length);
   function buildJumpRow(testament){
     var row = el("div",{class:"book-jump-row"});
     row.appendChild(el("span",{class:"book-jump-tlabel"},[testament]));
-    BOOK_CATEGORIES.filter(function(c){ return c.testament === testament; }).forEach(function(cat){
-      row.appendChild(el("button",{class:"book-jump-chip", onclick:function(){ scrollToBook(cat.from); }},[cat.label]));
+    BOOK_CATEGORIES.forEach(function(cat, idx){
+      if(cat.testament !== testament) return;
+      var chip = el("button",{class:"book-jump-chip", onclick:function(){ scrollToBook(cat.from); setActiveChip(idx); }},[cat.label]);
+      chipEls[idx] = chip;
+      row.appendChild(chip);
     });
     return row;
   }
   jumpBar.appendChild(buildJumpRow("구약"));
   jumpBar.appendChild(buildJumpRow("신약"));
   wrap.appendChild(jumpBar);
+  /* 헤더(상단 타이틀줄) 바로 밑에 자리를 잡도록, sticky 위치를 헤더 높이만큼 내려준다.
+     (둘 다 top:0으로 두면 스크롤시 서로 겹쳐버린다) */
+  /* 헤더도 sticky라서, 분류 칩 바는 헤더 높이만큼 아래에 붙어야 겹치지 않는다. 헤더 높이는
+     "저장 완료"·"새 버전" 안내가 나타나거나 사라질 때 바뀌므로, 높이가 바뀔 때마다 다시 맞춘다
+     (안 그러면 안내가 사라진 뒤 헤더와 칩 사이에 빈 틈이 생긴다). */
+  function syncJumpBarTop(){
+    var headerEl = document.querySelector("header");
+    jumpBar.style.top = (headerEl ? headerEl.offsetHeight : 0) + "px";
+  }
+  requestAnimationFrame(syncJumpBarTop);
+  if(window.ResizeObserver){
+    var headerForRO = document.querySelector("header");
+    if(headerForRO){
+      var jumpBarRO = new ResizeObserver(function(){ syncJumpBarTop(); });
+      jumpBarRO.observe(headerForRO);
+      state._jumpBarRO = jumpBarRO;
+    }
+  }
 
   function renderSection(title, count, books){
     wrap.appendChild(el("div",{class:"section-title"},[title + " · " + count + "권"]));
@@ -1442,6 +1422,43 @@ function renderLetters(){
   renderSection("구약", OT.length, OT);
   renderSection("신약", NT.length, NT);
   $main.appendChild(wrap);
+
+  /* 지금 화면에 보이는 책이 어느 분류인지 칩에 표시해준다(스크롤-스파이) — 66권을
+     오르내리다가 지금 내가 어디쯤 있는지 한눈에 알 수 있어서, 설교 중 이 책 저 책을
+     오갈 때 특히 도움이 된다. 분류 칩 바로 아래(화면에서 가장 위쪽에 걸쳐 있는) 책이
+     "지금 보고 있는 책"이라고 보고, 스크롤할 때마다 다시 계산한다. */
+  function setActiveChip(idx){
+    chipEls.forEach(function(c,i){ if(c) c.classList.toggle("active", i===idx); });
+  }
+  var rows = wrap.querySelectorAll(".book-row");
+  var scrollSpyTicking = false;
+  function updateActiveChipFromScroll(){
+    scrollSpyTicking = false;
+    if(!rows.length) return;
+    var current = rows[0];
+    /* 맨 아래(요한계시록 부근)까지 스크롤하면, 남은 내용이 얼마 없어서 마지막 책의 위쪽을
+       기준선까지 끌어올릴 "공간"이 부족할 수 있다 — 그럴 땐 기준선 계산 대신 그냥 마지막
+       책을 "지금 보고 있는 책"으로 본다. */
+    var atBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 2);
+    if(atBottom){
+      current = rows[rows.length - 1];
+    } else {
+      var headerEl = document.querySelector("header");
+      var lineY = (headerEl ? headerEl.offsetHeight : 0) + jumpBar.offsetHeight + 2;
+      for(var i=0;i<rows.length;i++){
+        if(rows[i].getBoundingClientRect().top <= lineY) current = rows[i];
+        else break; /* book-row는 항상 위→아래 순서이므로, 기준선을 넘는 순간 이전 것이 정답 */
+      }
+    }
+    var idx = categoryIndexForBook(Number(current.id.replace("book-row-","")));
+    if(idx >= 0) setActiveChip(idx);
+  }
+  function onBookListScroll(){
+    if(!scrollSpyTicking){ scrollSpyTicking = true; requestAnimationFrame(updateActiveChipFromScroll); }
+  }
+  window.addEventListener("scroll", onBookListScroll, {passive:true});
+  state._bookListScrollHandler = onBookListScroll;
+  requestAnimationFrame(updateActiveChipFromScroll);
 }
 
 function renderChapters(){
@@ -1486,7 +1503,10 @@ function renderVerses(){
       return;
     }
     verses.forEach(function(v){
-      grid.appendChild(el("button",{class:"verse-btn", onclick:function(){ goReading(state.book,state.chapter,v.v); }},[String(v.v)]));
+      /* 1절을 고르는 건 "그 장을 처음부터 읽기"와 같으므로 특정 구절 강조(바탕색) 없이 연다.
+         2절 이상을 고르면 그 구절로 스크롤하고 바탕색으로 표시해준다. (검색 결과나 하이라이트
+         모아보기에서 1절로 들어오는 경우는 그 구절을 찾아온 것이니 그대로 강조한다.) */
+      grid.appendChild(el("button",{class:"verse-btn", onclick:function(){ goReading(state.book,state.chapter, v.v === 1 ? null : v.v); }},[String(v.v)]));
     });
   });
 }
@@ -1494,6 +1514,10 @@ function renderVerses(){
 function renderReading(){
   var book = bookByNum(state.book);
   var wrap = el("div",{});
+  /* 좌우로 밀어서 장을 넘긴 경우, 넘어간 방향에서 새 장이 밀려 들어오는 짧은 애니메이션 */
+  if(state._swipeDir){ wrap.className = state._swipeDir > 0 ? "swipe-in-next" : "swipe-in-prev"; state._swipeDir = 0; }
+  /* 새 장을 열면 항상 맨 위부터 보이게 한다(특정 절로 들어온 경우엔 아래에서 그 절로 스크롤됨) */
+  window.scrollTo(0, 0);
 
   /* "넓게 보기": 위(헤더)·아래(이전/다음장, 오디오, 선택바)를 다 숨기고 본문만 넓게 읽을 수
      있게 한다. 마지막으로 켜둔 상태를 기억해뒀다가 다음에 읽기 화면을 열 때도 그대로 켜준다.
@@ -1507,6 +1531,7 @@ function renderReading(){
     lsSet(LS_IMMERSIVE, now);
     immersiveBtn.textContent = now ? "⤡" : "⤢";
     immersiveBtn.title = now ? "원래대로 보기" : "화면 넓게 보기";
+    placeImmersiveBtn();
     positionSelBar(); /* 바가 사라지거나 다시 생기면서 높이가 바뀌었을 수 있으니 선택바 위치도 다시 계산 */
     return now;
   }
@@ -1514,7 +1539,13 @@ function renderReading(){
     title: document.body.classList.contains("immersive") ? "원래대로 보기" : "화면 넓게 보기",
     onclick:function(){ toggleImmersive(); }
   },[document.body.classList.contains("immersive") ? "⤡" : "⤢"]);
-  document.body.appendChild(immersiveBtn);
+  /* 넓게 보기가 꺼져 있으면 헤더 줄 안(⋯ 설정 버튼 바로 왼쪽)에 넣어 설정 버튼을 가리지 않게 하고,
+     켜져 있으면(헤더가 숨겨지므로) 화면 우상단에 떠 있게 한다. */
+  function placeImmersiveBtn(){
+    if(document.body.classList.contains("immersive")) document.body.appendChild(immersiveBtn);
+    else $menuBtn.parentNode.insertBefore(immersiveBtn, $menuBtn);
+  }
+  placeImmersiveBtn();
   state._immersiveBtnEl = immersiveBtn;
 
   var head = el("div",{class:"row", style:"justify-content:space-between; margin-bottom:10px;"},[
@@ -1541,9 +1572,9 @@ function renderReading(){
   document.body.appendChild(selBar);
   state._selBarEl = selBar;
   function positionSelBar(){
-    var navH = (nav && nav.isConnected) ? nav.offsetHeight : 0;
-    var navBottom = (nav && nav.isConnected) ? (parseInt(nav.style.bottom, 10) || 0) : 0;
-    selBar.style.bottom = (navBottom + navH) + "px";
+    /* 화면 아래 고정 이전/다음장 바는 없앴으므로(좌우 밀기로 대체), 오디오바가 있으면 그 바로 위, 없으면 맨 아래 */
+    var audioBar = state._audioBarEl;
+    selBar.style.bottom = ((audioBar && audioBar.isConnected) ? audioBar.offsetHeight : 0) + "px";
   }
   var forBookSel = state.book, forChapterSel = state.chapter;
   function refreshSelBar(){
@@ -1562,8 +1593,8 @@ function renderReading(){
       items.forEach(function(h){ toggleHighlight(h.book,h.chapter,h.verse,h.text); });
       verseWrap.querySelectorAll(".verse-row.user-mark").forEach(function(r){
         r.classList.remove("user-mark");
-        var cb = r.querySelector(".verse-copy-btn");
-        if(cb) cb.style.display = "none";
+        /* 복사(📋)와 이미지 공유(🖼️) 아이콘 둘 다 숨긴다 */
+        r.querySelectorAll(".verse-copy-btn").forEach(function(b){ b.style.display = "none"; });
       });
       refreshSelBar();
     }},["선택 해제"]));
@@ -1650,12 +1681,15 @@ function renderReading(){
       if(isTarget) row.id = "targetVerseRow";
       verseWrap.appendChild(row);
     });
-    /* 장을 읽으면 자동으로 읽음 표시 */
-    if(!isRead(state.book, state.chapter)){
-      markRead(state.book, state.chapter, true);
-      var cb = wrap.querySelector('input[type="checkbox"]');
-      if(cb) cb.checked = true;
-    }
+    /* 장 끝: 이전/다음 장 버튼. 예전처럼 화면 아래에 항상 붙어 있지 않고 본문 맨 끝에만 있어서,
+       읽는 동안에는 본문 창이 그만큼 넓어진다. 좌우 밀기를 모르는 분도 여기서 넘길 수 있다. */
+    verseWrap.appendChild(el("div",{class:"chapter-end-nav"},[
+      el("button",{class:"btn", onclick:function(){ swipeToChapter(-1); }},["‹ 이전 장"]),
+      el("button",{class:"btn btn-primary", onclick:function(){ swipeToChapter(1); }},["다음 장 ›"])
+    ]));
+    verseWrap.appendChild(el("div",{class:"swipe-hint"},["👈 화면을 좌우로 밀어도 장이 넘어가요 👉"]));
+    /* 장을 열기만 해서는 읽음으로 표시하지 않는다 — 말씀을 찾으러 잠깐 들어갔다 나와도 장 색이
+       바뀌지 않도록, "읽음으로 표시"를 직접 체크했을 때만 읽음으로 기록한다. */
     if(state.targetVerse){
       var targetEl = document.getElementById("targetVerseRow");
       if(targetEl) targetEl.scrollIntoView({block:"center"});
@@ -1664,13 +1698,36 @@ function renderReading(){
 
   /* 하단 바: 이전/다음 장 내비게이션은 바로 그려두고(오디오 유무를 기다리지 않음),
      오디오는 찾아지는 대로(캐시에서 복원된 경우 그 장의 mp3 하나만 방금 불러옴) 붙인다. */
-  var nav = el("div",{class:"chapter-nav", style:"bottom:0;"});
-  var prevBtn = el("button",{class:"btn", onclick:function(){ gotoRelativeChapter(-1, false); }},["‹ 이전 장"]);
-  var nextBtn = el("button",{class:"btn btn-primary", onclick:function(){ gotoRelativeChapter(1, false); }},["다음 장 ›"]);
-  nav.appendChild(prevBtn); nav.appendChild(nextBtn);
-  document.body.appendChild(nav);
-  state._navEl = nav;
-  positionSelBar(); /* nav가 이제 생겼으니, 이미 선택된 구절이 있어 선택바가 떠 있다면 위치를 다시 맞춘다 */
+  /* 화면 아래에 늘 붙어 있던 이전/다음 장 버튼 대신, 화면을 좌우로 밀어서 장을 넘긴다
+     (왼쪽으로 밀면 다음 장, 오른쪽으로 밀면 이전 장 — 책장을 넘기는 방향). 세로 스크롤과
+     헷갈리지 않도록 가로로 충분히(70px 이상), 그리고 세로보다 확실히 더 많이 움직였을 때만
+     넘긴다. 오디오바·선택바·입력칸·모달 위에서 시작한 손짓은 무시한다. */
+  var swipeStart = null;
+  function onSwipeStart(e){
+    if(!e.touches || e.touches.length !== 1){ swipeStart = null; return; }
+    var t = e.target;
+    if(t && t.closest && t.closest(".audio-bar, .selection-bar, .modal-backdrop, input, textarea, select, header, audio")){ swipeStart = null; return; }
+    swipeStart = {x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now()};
+  }
+  function onSwipeEnd(e){
+    if(!swipeStart) return;
+    var start = swipeStart; swipeStart = null;
+    var touch = e.changedTouches && e.changedTouches[0];
+    if(!touch) return;
+    var dx = touch.clientX - start.x, dy = touch.clientY - start.y;
+    if(Date.now() - start.t > 900) return;
+    if(Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
+    swipeToChapter(dx < 0 ? 1 : -1);
+  }
+  document.addEventListener("touchstart", onSwipeStart, {passive:true});
+  document.addEventListener("touchend", onSwipeEnd, {passive:true});
+  state._swipeHandlers = {start:onSwipeStart, end:onSwipeEnd};
+  /* 처음 몇 번은 좌우 밀기로 장을 넘길 수 있다는 걸 알려준다 */
+  var swipeHintCount = lsGet(LS_SWIPEHINT, 0);
+  if(swipeHintCount < 2){
+    lsSet(LS_SWIPEHINT, swipeHintCount + 1);
+    setTimeout(function(){ showToast("👈 좌우로 밀어서 이전·다음 장으로 넘길 수 있어요 👉"); }, 400);
+  }
 
   var shouldAutoplay = !!state._pendingAutoplay;
   state._pendingAutoplay = false;
@@ -1699,7 +1756,6 @@ function renderReading(){
       bar.appendChild(audio);
       document.body.appendChild(bar);
       state._audioBarEl = bar;
-      nav.style.bottom = "52px";
       positionSelBar();
     } else if(state._audioBarEl){
       state._audioBarEl.remove(); state._audioBarEl = null;
@@ -1709,6 +1765,18 @@ function renderReading(){
 }
 
 async function stepChapter(delta){ return gotoRelativeChapter(delta, false); }
+
+/* 좌우 밀기 / 장 끝 버튼으로 장을 넘길 때: 넘어가는 방향을 기억해 애니메이션을 주고,
+   창세기 1장에서 더 앞으로, 요한계시록 마지막 장에서 더 뒤로 가려 하면 알려준다. */
+async function swipeToChapter(delta){
+  if(delta < 0 && state.book === 1 && state.chapter === 1){ showToast("성경의 첫 장이에요"); return; }
+  if(delta > 0 && state.book === 66){
+    var lastTotal = await getChapterCount(state.version, 66);
+    if(state.chapter >= lastTotal){ showToast("성경의 마지막 장이에요"); return; }
+  }
+  state._swipeDir = delta;
+  return gotoRelativeChapter(delta, false);
+}
 
 async function gotoRelativeChapter(delta, autoplay){
   var total = await getChapterCount(state.version, state.book);
@@ -1735,19 +1803,126 @@ var _origRender = render;
 render = function(){
   if(state._audioBarEl){ state._audioBarEl.remove(); state._audioBarEl=null; }
   if(state._navEl){ state._navEl.remove(); state._navEl=null; }
+  if(state._swipeHandlers){
+    document.removeEventListener("touchstart", state._swipeHandlers.start);
+    document.removeEventListener("touchend", state._swipeHandlers.end);
+    state._swipeHandlers = null;
+  }
   if(state._selBarEl){ state._selBarEl.remove(); state._selBarEl=null; }
   if(state._immersiveBtnEl){ state._immersiveBtnEl.remove(); state._immersiveBtnEl=null; }
+  if(state._jumpBarRO){ state._jumpBarRO.disconnect(); state._jumpBarRO=null; }
+  if(state._bookListScrollHandler){ window.removeEventListener("scroll", state._bookListScrollHandler); state._bookListScrollHandler=null; }
   /* "넓게 보기"는 성경읽기 화면에서만 의미가 있다 — 다른 화면(책 목록 등)으로 나가면
      헤더가 다시 보여야 하니 여기서 일단 끄고, renderReading()이 저장된 설정을 보고 다시 켠다. */
   document.body.classList.remove("immersive");
   _origRender();
 };
 
+/* ---------- 사용설명서 (⋯ 설정 → 📖 사용설명서, 그리고 첫 연결 화면에서도 열 수 있음) ----------
+   **굵게** 표시한 부분은 화면에서 실제로 보이는 버튼/메뉴 이름이다. 기능을 바꾸면 여기도 같이 고친다. */
+var MANUAL_SECTIONS = [
+  {title:"📚 성경 찾아 읽기", steps:true, items:[
+    "맨 위 왼쪽의 큰 **📚 전체** 버튼을 누르면 성경 66권 목록이 나옵니다.",
+    "목록 위의 분류 칩(**모세오경 · 역사서 · 시가서 … 복음서 · 바울서신 · 계시록**)을 누르면 그 부분으로 바로 이동합니다. 목록을 아래로 내려도 칩은 늘 위에 떠 있어요.",
+    "책 이름 → 장 번호 → 절 번호 순서로 누르면 본문이 열립니다.",
+    "**1절**을 누르면 그 장을 처음부터 보여주고, 다른 절(예: 28절)을 누르면 그 구절로 바로 내려가서 바탕색으로 표시해 줍니다.",
+    "절 화면의 **전체 읽기 ›**를 눌러도 그 장을 처음부터 읽을 수 있어요.",
+    "위쪽의 **책 이름**이나 **○장** 글자를 누르면 장·절 고르는 화면으로 돌아갑니다."
+  ]},
+  {title:"👉 이전 장 · 다음 장 넘기기", items:[
+    "본문 화면을 손가락으로 **왼쪽으로 밀면 다음 장**, **오른쪽으로 밀면 이전 장**으로 넘어갑니다(책장 넘기듯이).",
+    "위아래로 스크롤할 때는 넘어가지 않아요. 옆으로 확실히 밀어주세요.",
+    "장의 맨 끝까지 내려가면 **‹ 이전 장 / 다음 장 ›** 버튼도 있습니다.",
+    "책의 마지막 장에서 넘기면 다음 책 1장으로 이어집니다."
+  ]},
+  {title:"🔍 넓게 보기 (위·아래 숨기기)", items:[
+    "본문을 **짧게 한 번 톡** 누르면 위쪽 메뉴와 아래쪽 오디오가 숨겨져 본문을 넓게 볼 수 있어요. 다시 톡 누르면 돌아옵니다.",
+    "위쪽의 **⤢** 버튼으로도 켜고 끌 수 있습니다.",
+    "켜둔 상태는 기억해 두었다가 다음에 읽을 때도 그대로 적용됩니다."
+  ]},
+  {title:"⭐ 하이라이트 · 복사 · 이미지 공유", items:[
+    "마음에 닿는 구절을 **0.5초 정도 꾹 누르면** 바탕색이 칠해집니다(하이라이트). 다시 꾹 누르면 지워집니다.",
+    "하이라이트한 구절 옆의 **📋**를 누르면 구절이 복사되어 카카오톡·메모 등에 붙여넣을 수 있어요.",
+    "**🖼️**를 누르면 그 구절이 예쁜 이미지 카드로 만들어져 카카오톡 등으로 바로 보내거나 저장할 수 있습니다.",
+    "여러 구절을 하이라이트하면 아래에 **○개 구절 선택됨** 줄이 나타납니다. **📋 선택 복사**를 누르면 고른 구절을 한꺼번에 복사합니다. 예: 로마서 5:6,8 → 본문 … 본문 (로마서 5:6,8 개역개정)",
+    "**선택 해제**를 누르면 이 장의 하이라이트를 한 번에 지웁니다."
+  ]},
+  {title:"✍️ 묵상 메모 · 하이라이트 모아보기", items:[
+    "오른쪽 위 **⋯** → **⭐ 하이라이트 모아보기**를 누르면 그동안 표시한 구절을 모두 볼 수 있어요.",
+    "각 구절 아래 칸에 묵상한 내용을 적으면 자동으로 저장됩니다. 복사할 때 메모도 함께 복사돼요.",
+    "구절을 누르면 그 본문으로 바로 이동합니다. 필요 없는 구절은 **지우기**로 정리하세요."
+  ]},
+  {title:"🔎 본문 검색", items:[
+    "위쪽의 **🔍**를 누르고 찾고 싶은 단어를 입력하세요(예: 사랑, 믿음, 에덴).",
+    "검색 범위를 **전체 · 구약 · 신약**으로 고르거나, 아래 칸에서 책을 직접 지정할 수 있습니다(예: 요한복음 ~ 사도행전). 범위를 좁히면 더 빨라요.",
+    "결과를 누르면 그 구절로 바로 이동합니다."
+  ]},
+  {title:"📖 성경 번역본 바꾸기", items:[
+    "위쪽의 번역본 칸(예: **개역개정**)을 누르면 개역한글판, 새번역, 쉬운성경, 영어 성경 등으로 바꿀 수 있습니다.",
+    "보고 있던 책과 장은 그대로 유지됩니다."
+  ]},
+  {title:"🔊 오디오 성경 듣기", items:[
+    "**개역개정**으로 읽을 때 화면 아래에 오디오 재생 줄이 나타납니다(오디오는 개역개정만 있어요).",
+    "▶ 를 누르면 그 장을 읽어 줍니다. 한 장이 끝나면 다음 장으로 넘어가며 계속 들려줍니다.",
+    "재생 속도(예: 1.5배)를 바꾸면 다음 장에서도 그 속도가 유지됩니다(안드로이드: 재생 줄의 ⋮ 메뉴 → 재생 속도)."
+  ]},
+  {title:"✅ 읽음 표시", items:[
+    "본문 위쪽의 **읽음으로 표시**를 체크하면 그 장을 읽은 것으로 기록되고, 장 번호 버튼의 색이 바뀝니다.",
+    "말씀을 찾으러 잠깐 들어갔다 나온 것은 읽음으로 기록되지 않아요. 직접 체크한 장만 표시됩니다.",
+    "책 목록에서 각 책을 얼마나 읽었는지 볼 수 있습니다.",
+    "처음부터 다시 시작하고 싶으면 **⋯** → **✅ 읽음 표시 모두 지우기**를 두 번 누르세요."
+  ]},
+  {title:"🔠 글자 크기", items:[
+    "**⋯** → **본문 글자 크기**의 **가−/가+**로 본문 글자를 줄이거나 키울 수 있습니다.",
+    "바꾼 크기는 기억되어 다음에도 그대로 적용됩니다."
+  ]},
+  {title:"💾 내 자료 백업 · 다른 폰으로 옮기기", items:[
+    "**⋯** → **⬇️ 내 자료 내보내기**를 누르면 하이라이트, 메모, 읽음 기록, 글자 크기가 파일 하나로 저장됩니다.",
+    "새 폰이나 다른 기기에서 **⬆️ 내 자료 가져오기**로 그 파일을 고르면 그대로 옮겨집니다.",
+    "폰을 바꾸기 전이나 가끔 한 번씩 백업해 두시면 안심입니다."
+  ]},
+  {title:"✨ 새 버전 업데이트", items:[
+    "앱이 좋아지면 위쪽에 **✨ 새 버전이 있어요** 안내가 뜹니다. **지금 업데이트**를 누르면 바로 적용됩니다.",
+    "앱을 다시 설치할 필요는 없고, 하이라이트·메모 등 내 자료도 그대로 남아 있어요."
+  ]},
+  {title:"🛠️ 문제가 생겼을 때", items:[
+    "**처음 화면에서 폴더를 연결하라고 나와요** → **📁 bible 폴더 연결하기**를 누르고, bible.zip 압축을 풀어서 생긴 폴더를 선택하세요. 폴더 이름이 **bible(1)**처럼 조금 달라도 이름을 바꿀 필요 없이 그대로 고르면 됩니다.",
+    "**\"성경 자료를 찾지 못했어요\"가 나와요** → 압축(zip)을 아직 풀지 않은 경우입니다. 내 파일 앱에서 bible.zip을 눌러 **압축 풀기**를 한 뒤, 생긴 폴더를 다시 선택하세요.",
+    "**오디오가 안 보여요** → 번역본이 **개역개정**인지 확인하세요. 오디오는 개역개정만 있습니다.",
+    "**카카오톡 안에서 열렸다고 나와요** → 안내의 **Chrome으로 열기**(아이폰은 Safari로 열기)를 눌러 주세요. 설치는 Chrome이나 Safari에서만 됩니다.",
+    "**다른 폴더로 바꾸고 싶어요** → **⋯** → **📁 다른 폴더로 다시 연결**."
+  ]}
+];
+/* "**굵게**" 표시를 <b>로 바꿔 화면 요소 배열로 만든다 */
+function manualRichText(text){
+  var parts = text.split("**");
+  return parts.map(function(p, i){ return i % 2 === 1 ? el("b",{},[p]) : p; }).filter(function(p){ return p !== ""; });
+}
+function openManualModal(){
+  var backdrop = el("div",{class:"modal-backdrop", onclick:function(e){ if(e.target===backdrop) backdrop.remove(); }});
+  var sheet = el("div",{class:"modal-sheet manual-sheet"});
+  sheet.appendChild(el("h3",{style:"font-size:17px;"},["📖 사용설명서"]));
+  sheet.appendChild(el("p",{class:"manual-intro"},["궁금한 항목을 누르면 설명이 펼쳐집니다."]));
+  MANUAL_SECTIONS.forEach(function(sec, i){
+    var det = el("details",{class:"manual-sec"});
+    if(i === 0) det.open = true;
+    det.appendChild(el("summary",{},[sec.title]));
+    var list = el(sec.steps ? "ol" : "ul",{});
+    sec.items.forEach(function(t){ list.appendChild(el("li",{},manualRichText(t))); });
+    det.appendChild(list);
+    sheet.appendChild(det);
+  });
+  sheet.appendChild(el("button",{class:"btn btn-primary", style:"margin-top:8px; width:100%; padding:12px;", onclick:function(){ backdrop.remove(); }},["닫기"]));
+  backdrop.appendChild(sheet);
+  document.body.appendChild(backdrop);
+}
+
 /* ---------- 설정(버전 이름 변경) 모달 ---------- */
 function openSettingsModal(){
   var backdrop = el("div",{class:"modal-backdrop", onclick:function(e){ if(e.target===backdrop) backdrop.remove(); }});
   var sheet = el("div",{class:"modal-sheet"});
   sheet.appendChild(el("h3",{},["설정"]));
+  sheet.appendChild(el("button",{class:"btn btn-primary", style:"width:100%; margin-bottom:12px; padding:11px; font-size:14px;", onclick:function(){ backdrop.remove(); openManualModal(); }},["📖 사용설명서 보기"]));
   var fontSizeLabel = el("span",{},[getFontSize() + "px"]);
   var fontSizeRow = el("div",{class:"fontsize-row"},[
     el("div",{class:"label"},["🔠 본문 글자 크기"]),
@@ -1797,6 +1972,23 @@ function openSettingsModal(){
   /* 본문 검색은 이제 헤더의 🔍 아이콘으로 바로 열 수 있어서(더 빨리 쓸 수 있도록), 여기서는 뺐다. */
   var highlightsBtn = el("button",{class:"btn", style:"margin-top:10px; width:100%;", onclick:function(){ backdrop.remove(); openHighlightsModal(); }},["⭐ 하이라이트 모아보기"]);
   sheet.appendChild(highlightsBtn);
+  /* 예전 버전에서는 장을 열기만 해도 자동으로 읽음 표시가 됐었으므로, 그동안 쌓인 읽음 표시를
+     한 번에 지울 수 있게 한다. 실수로 누르지 않도록 두 번 눌러야 지워진다. */
+  var resetReadArmed = false;
+  var resetReadBtn = el("button",{class:"btn", style:"margin-top:6px; width:100%;", onclick:function(){
+    if(!resetReadArmed){
+      resetReadArmed = true;
+      resetReadBtn.textContent = "⚠️ 정말 모든 읽음 표시를 지울까요? 한 번 더 누르세요";
+      resetReadBtn.style.color = "var(--danger)";
+      return;
+    }
+    readMap = {};
+    lsSet(LS_READ, readMap);
+    backdrop.remove();
+    render();
+    showToast("읽음 표시를 모두 지웠어요");
+  }},["✅ 읽음 표시 모두 지우기"]);
+  sheet.appendChild(resetReadBtn);
   var reconnectBtn = el("button",{class:"btn", style:"margin-top:6px; width:100%;", onclick:function(){ backdrop.remove(); goConnectScreen(); }},["📁 다른 폴더로 다시 연결"]);
   sheet.appendChild(reconnectBtn);
   var clearBtn = el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%; font-size:12px; color:var(--danger);", onclick:function(){

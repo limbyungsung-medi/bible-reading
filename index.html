@@ -168,7 +168,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-02-2">
+<meta name="app-build" content="2026-10-02-3">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2186,6 +2186,17 @@ var CURRENT_BUILD = (document.querySelector('meta[name="app-build"]') || {}).con
 var $updateBanner = document.getElementById("updateBanner");
 var $updateBtn = document.getElementById("updateBtn");
 var _updateShown = false;
+var _latestBuild = null;
+var LS_UPDATE_ATTEMPT = "bible_update_attempt_v1"; /* 업데이트 버튼을 눌러 어느 판으로 바꾸려 했는지 */
+
+/* 업데이트 직후 주소 끝에 붙인 "?v=..." 표시는 깔끔하게 지운다(화면 주소만 정리, 다시 불러오지 않음) */
+(function(){
+  try{
+    if(/[?&]v=/.test(location.search)){
+      history.replaceState(null, "", location.pathname + location.hash);
+    }
+  }catch(e){}
+})();
 
 function checkForUpdate(){
   if(_updateShown || !CURRENT_BUILD) return;
@@ -2196,15 +2207,39 @@ function checkForUpdate(){
     if(!html) return;
     var m = /<meta name="app-build" content="([^"]*)">/.exec(html);
     if(m && m[1] && m[1] !== CURRENT_BUILD){
+      _latestBuild = m[1];
+      /* 방금 이 판으로 업데이트를 시도했는데도 아직 예전 판이 떠 있다면(휴대폰이 예전 화면을 잠깐
+         붙잡고 있는 경우), 같은 안내를 무한 반복하지 않고 한 번 더 확실한 방법으로 새로 불러온다. */
+      var attempt = null;
+      try{ attempt = JSON.parse(sessionStorage.getItem(LS_UPDATE_ATTEMPT) || "null"); }catch(e){}
+      if(attempt && attempt.build === m[1] && (Date.now() - attempt.at) < 60*1000 && !attempt.retried){
+        try{ sessionStorage.setItem(LS_UPDATE_ATTEMPT, JSON.stringify({build:m[1], at:Date.now(), retried:true})); }catch(e){}
+        hardReloadTo(m[1]);
+        return;
+      }
       _updateShown = true;
       $updateBanner.style.display = "flex";
     }
   }).catch(function(){ /* 오프라인이거나 네트워크 문제면 조용히 무시 */ });
 }
+/* 새 판으로 확실히 바꿔 불러오기. 예전에는 단순히 "새로고침"만 했는데, 휴대폰(브라우저)이 방금
+   받았던 예전 화면을 최대 10분 정도 보관해 두었다가 그대로 다시 보여주는 경우가 있어
+   "새 버전이 있어요"가 무한 반복되는 문제가 있었다. 그래서
+   (1) 앱 주소를 보관본을 무시하고 서버에서 새로 받아 휴대폰의 보관본을 새 판으로 교체한 뒤,
+   (2) 주소 끝에 판 번호를 붙여(?v=판번호) 절대 예전 보관본이 쓰일 수 없는 주소로 다시 연다. */
+function hardReloadTo(build){
+  var base = location.href.split("#")[0].split("?")[0];
+  var target = base + "?v=" + encodeURIComponent(build || String(Date.now()));
+  var go = function(){ location.replace(target); };
+  try{
+    fetch(base, {cache:"reload"}).then(go, go);
+  }catch(e){ go(); }
+}
 if($updateBtn) $updateBtn.addEventListener("click", function(){
   $updateBtn.disabled = true;
   $updateBtn.textContent = "업데이트 중…";
-  location.reload();
+  try{ sessionStorage.setItem(LS_UPDATE_ATTEMPT, JSON.stringify({build:_latestBuild, at:Date.now(), retried:false})); }catch(e){}
+  hardReloadTo(_latestBuild);
 });
 /* 앱을 열었을 때, 그리고 백그라운드에 있다가 다시 돌아왔을 때 확인 */
 setTimeout(checkForUpdate, 2500);

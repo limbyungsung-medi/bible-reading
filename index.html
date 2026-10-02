@@ -33,6 +33,18 @@
       color-scheme: dark;
     }
   }
+  /* 검은 바탕 + 흰 글씨(시인성 우선). 기본값이며, 설정에서 밝은 바탕으로 바꿀 수 있다.
+     (위의 휴대폰 다크모드 규칙보다 뒤에 두어 항상 이 색이 이긴다) */
+  :root[data-theme="black"]{
+    --bg:#000000; --surface:#111111; --border:#333333; --text:#ffffff; --text-dim:#bdbdbd;
+    --accent:#f2a7b4; --accent-soft:#3a1d24; --read:#e0b866; --read-text:#1a1203;
+    --mark-bg:#3f3610; --mark-border:#b39a3a;
+    --shadow:0 1px 2px rgba(0,0,0,.6),0 6px 16px rgba(0,0,0,.5);
+    --danger:#ff9a87;
+    --error-bg:#3a1a14;
+    --ctrl-border:#8c8c8c; --ctrl-bg:#1c1c1c;
+    color-scheme: dark;
+  }
   :root[data-theme="dark"]{
     --bg:#181410; --surface:#231d17; --border:#382f24; --text:#ece4d6; --text-dim:#a89a83;
     --accent:#d98a97; --accent-soft:#3a2229; --read:#d1a75c; --read-text:#211705;
@@ -98,6 +110,25 @@
   .verse-row.user-mark{background:var(--mark-bg); box-shadow:inset 2px 0 0 var(--mark-border);}
   .verse-num{font-family:var(--font-serif); color:var(--accent); font-weight:700; font-size:12.5px; min-width:22px; padding-top:3px;}
   .verse-text{flex:1; font-family:var(--font-serif);}
+  /* 두 번역본 대조 보기: 왼쪽/오른쪽 반반, 절마다 가로 구분선. 한 절의 길이가 서로 달라도
+     같은 절은 항상 같은 줄(높이)에서 시작하도록 한 줄(row)에 두 칸을 나란히 둔다. */
+  .par-head{display:flex; align-items:center; gap:0; border-top:1px solid var(--border); border-bottom:2px solid var(--border); position:sticky; z-index:3; background:var(--bg);}
+  .par-head > div{flex:1; min-width:0; padding:8px 6px; font-size:13px; font-weight:700; color:var(--text);}
+  .par-head > div:first-child{border-right:1px solid var(--border);}
+  .par-head select{width:100%; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); border-radius:8px; padding:5px 6px; font-size:13px; font-weight:700;}
+  .verse-view.parallel{gap:0;}
+  .verse-row.parallel{padding:0; gap:0; border-radius:0; align-items:stretch; border-bottom:1px solid var(--border); font-size:calc(var(--verse-font-size,16px) * 0.92); line-height:1.65;}
+  .verse-row.parallel .par-col{flex:1; min-width:0; padding:8px 6px; display:flex; flex-direction:column; gap:2px;}
+  .verse-row.parallel .par-col.left{border-right:1px solid var(--border);}
+  .verse-row.parallel .par-col .verse-num{min-width:0; padding-top:0;}
+  .verse-row.parallel .par-col .par-missing{color:var(--text-dim); font-size:12px;}
+  .verse-row.parallel .par-actions{display:flex; gap:2px;}
+  .par-toggle{font-size:12.5px; padding:5px 10px; border-radius:100px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); font-weight:700; cursor:pointer; white-space:nowrap;}
+  .par-toggle.on{background:var(--accent); border-color:var(--accent); color:#000;}
+  .theme-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; margin-bottom:12px;}
+  .theme-row .label{font-size:13px; font-weight:600;}
+  .theme-row .controls{display:flex; gap:6px;}
+  .theme-row .controls .btn.active{background:var(--accent); border-color:var(--accent); color:#000; font-weight:700;}
   .verse-copy-btn{flex:none; border:none; background:transparent; color:var(--mark-border); font-size:15px; padding:2px 4px; cursor:pointer; line-height:1;}
   .toast{position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(8px); z-index:40; background:var(--text); color:var(--bg); padding:9px 18px; border-radius:100px; font-size:12.5px; font-weight:600; box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease; max-width:80%; text-align:center;}
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
@@ -168,7 +199,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-02-3">
+<meta name="app-build" content="2026-10-02-4">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -200,6 +231,14 @@
 <script>
 (function(){
 "use strict";
+/* 화면 색: "black"(검은 바탕·흰 글씨, 기본) / "light"(밝은 바탕) / "auto"(휴대폰 설정 따름) */
+var LS_THEME = "bible_theme_v1";
+function getTheme(){ try{ var v = JSON.parse(localStorage.getItem(LS_THEME) || "null"); return v || "black"; }catch(e){ return "black"; } }
+function applyTheme(t){
+  if(t === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "black");
+}
+applyTheme(getTheme());
 
 /* ---------- 66권 성경 메타데이터 ---------- */
 var BOOKS = [
@@ -279,6 +318,7 @@ var LS_FONTSIZE = "bible_fontsize_v1";
 var LS_READDATES = "bible_readdates_v1";
 var LS_SEARCHRANGE = "bible_searchrange_v1"; /* 본문 검색 범위(시작/끝 책) — {from, to} */
 var LS_SWIPEHINT = "bible_swipehint_v1"; /* "좌우로 밀어서 장 넘기기" 안내를 몇 번 보여줬는지 */
+var LS_PARALLEL = "bible_parallel_v1"; /* 대조 보기: {on:true/false, version:"오른쪽에 띄울 번역본"} */
 var LS_IMMERSIVE = "bible_immersive_v1"; /* 성경읽기 화면에서 위/아래 바를 숨기는 "넓게 보기" 모드 — 우상단 버튼뿐 아니라
   본문을 짧게 터치해도 켜고 끌 수 있다(길게 누르면 하이라이트가 되도록 구분해둠) */
 function lsGet(key, fallback){
@@ -669,6 +709,19 @@ function labelForFile(filenameNoExt){
    정렬한다 — 영어보다 한글로 읽고 대조하는 일이 많다는 요청에 따른 것. */
 function isKoreanLabel(label){
   return /[ㄱ-ㆎ가-힣]/.test(label);
+}
+/* 대조 보기 오른쪽 번역본 고르기: 저장해 둔 것이 있으면 그것, 없으면 지금 번역본이 한글이면
+   영어(NIV가 있으면 NIV), 영어면 한글 쪽에서 첫 번째 것을 고른다. 지금 번역본과 같으면 다른 것으로. */
+function pickParallelVersion(saved){
+  var keys = Object.keys(state.lfaFiles).filter(function(k){ return k !== state.version; });
+  if(!keys.length) return null;
+  if(saved && keys.indexOf(saved) >= 0) return saved;
+  keys.sort(versionKeyCompare);
+  var curKo = state.lfaFiles[state.version] ? isKoreanLabel(labelForFile(state.lfaFiles[state.version].displayName)) : true;
+  var niv = keys.filter(function(k){ return /niv/i.test(k); })[0];
+  if(curKo && niv) return niv;
+  var other = keys.filter(function(k){ return isKoreanLabel(labelForFile(state.lfaFiles[k].displayName)) !== curKo; })[0];
+  return other || keys[0];
 }
 function versionKeyCompare(a, b){
   var la = state.lfaFiles[a] ? labelForFile(state.lfaFiles[a].displayName) : a;
@@ -1532,6 +1585,9 @@ function renderReading(){
     immersiveBtn.textContent = now ? "⤡" : "⤢";
     immersiveBtn.title = now ? "원래대로 보기" : "화면 넓게 보기";
     placeImmersiveBtn();
+    /* 대조 보기 머리줄(번역본 이름)은 헤더 바로 밑에 붙어 있으므로, 헤더가 숨겨지거나 다시 나오면 위치도 맞춘다 */
+    var ph = document.querySelector(".par-head");
+    if(ph){ var hh = document.querySelector("header"); ph.style.top = (now || !hh ? 0 : hh.offsetHeight) + "px"; }
     positionSelBar(); /* 바가 사라지거나 다시 생기면서 높이가 바뀌었을 수 있으니 선택바 위치도 다시 계산 */
     return now;
   }
@@ -1548,8 +1604,17 @@ function renderReading(){
   placeImmersiveBtn();
   state._immersiveBtnEl = immersiveBtn;
 
-  var head = el("div",{class:"row", style:"justify-content:space-between; margin-bottom:10px;"},[
+  /* 대조 보기 설정(켜짐 여부 + 오른쪽 번역본). 오른쪽 번역본이 지금 없는 파일이면 자동으로 고른다. */
+  var par = lsGet(LS_PARALLEL, {on:false, version:null});
+  var parOn = !!par.on && Object.keys(state.lfaFiles).length > 1;
+  var parVersion = pickParallelVersion(par.version);
+  var head = el("div",{class:"row", style:"justify-content:space-between; margin-bottom:10px; gap:8px; flex-wrap:wrap;"},[
     el("div",{style:"font-weight:700; font-size:16px;"},[book.ko + " " + state.chapter + "장" + (state.targetVerse ? (" " + state.targetVerse + "절") : "")]),
+    el("button",{class:"par-toggle" + (parOn ? " on" : ""), title:"두 번역본을 나란히 대조해서 보기", onclick:function(){
+      if(Object.keys(state.lfaFiles).length < 2){ showToast("대조하려면 번역본이 2개 이상 있어야 해요"); return; }
+      lsSet(LS_PARALLEL, {on:!parOn, version:parVersion});
+      render();
+    }},[parOn ? "⇆ 대조 끄기" : "⇆ 대조"]),
     el("label",{class:"row", style:"font-size:12.5px; color:var(--text-dim); gap:6px; cursor:pointer;"},[
       (function(){
         var cb = el("input",{type:"checkbox"});
@@ -1605,18 +1670,73 @@ function renderReading(){
   wrap.appendChild(verseWrap);
   $main.appendChild(wrap);
 
-  getChapterVerses(state.version, state.book, state.chapter).then(function(verses){
+  var parHead = null;
+  if(parOn){
+    /* 대조 보기 머리줄: 왼쪽 = 지금 번역본 이름, 오른쪽 = 대조할 번역본 고르기 */
+    var parSelect = el("select",{"aria-label":"대조할 번역본"});
+    Object.keys(state.lfaFiles).sort(versionKeyCompare).forEach(function(k){
+      if(k === state.version) return;
+      parSelect.appendChild(el("option",{value:k},[labelForFile(state.lfaFiles[k].displayName)]));
+    });
+    parSelect.value = parVersion;
+    parSelect.addEventListener("change", function(){
+      lsSet(LS_PARALLEL, {on:true, version:parSelect.value});
+      render();
+    });
+    parHead = el("div",{class:"par-head"},[
+      el("div",{},[labelForFile(state.lfaFiles[state.version].displayName)]),
+      el("div",{},[parSelect])
+    ]);
+    wrap.insertBefore(parHead, verseWrap);
+    verseWrap.classList.add("parallel");
+    requestAnimationFrame(function(){
+      var h = document.querySelector("header");
+      parHead.style.top = (h && !document.body.classList.contains("immersive") ? h.offsetHeight : 0) + "px";
+    });
+  }
+  Promise.all([
+    getChapterVerses(state.version, state.book, state.chapter),
+    parOn ? getChapterVerses(parVersion, state.book, state.chapter).catch(function(){ return null; }) : Promise.resolve(null)
+  ]).then(function(results){
+    var verses = results[0];
+    var verses2 = results[1];
     clear(verseWrap);
     if(!verses || !verses.length){
       verseWrap.appendChild(el("div",{class:"empty-hint"},["이 버전에는 해당 장 데이터가 없어요."]));
       return;
     }
+    /* 대조 보기일 때: 두 번역본의 절 번호를 합쳐서(한쪽에만 있는 절도 빠짐없이) 순서대로 한 줄씩 */
+    var byNum2 = {};
+    if(parOn){
+      (verses2 || []).forEach(function(v2){ byNum2[v2.v] = v2.text; });
+      var seen = {};
+      verses.forEach(function(v){ seen[v.v] = true; });
+      (verses2 || []).forEach(function(v2){ if(!seen[v2.v]){ verses.push({v:v2.v, text:""}); seen[v2.v] = true; } });
+      verses.sort(function(a,b){ return a.v - b.v; });
+    }
     verses.forEach(function(v){
       var isTarget = state.targetVerse && v.v === state.targetVerse;
       var marked = isHighlighted(state.book, state.chapter, v.v);
-      var row = el("div",{class:"verse-row"+(isTarget?" highlight":"")+(marked?" user-mark":"")});
-      row.appendChild(el("div",{class:"verse-num"},[String(v.v)]));
-      row.appendChild(el("div",{class:"verse-text"},[v.text]));
+      var row = el("div",{class:"verse-row"+(parOn?" parallel":"")+(isTarget?" highlight":"")+(marked?" user-mark":"")});
+      var btnHolder = row;
+      if(parOn){
+        var left = el("div",{class:"par-col left"},[
+          el("div",{class:"verse-num"},[String(v.v)]),
+          v.text ? el("div",{class:"verse-text"},[v.text]) : el("div",{class:"par-missing"},["(이 번역본에는 없는 절)"])
+        ]);
+        var t2 = byNum2[v.v];
+        var right = el("div",{class:"par-col right"},[
+          el("div",{class:"verse-num"},[String(v.v)]),
+          (t2 !== undefined) ? el("div",{class:"verse-text"},[t2]) : el("div",{class:"par-missing"},[verses2 ? "(이 번역본에는 없는 절)" : "(이 번역본에는 이 장이 없어요)"])
+        ]);
+        btnHolder = el("div",{class:"par-actions"});
+        left.appendChild(btnHolder);
+        row.appendChild(left);
+        row.appendChild(right);
+      } else {
+        row.appendChild(el("div",{class:"verse-num"},[String(v.v)]));
+        row.appendChild(el("div",{class:"verse-text"},[v.text]));
+      }
       var copyBtn = el("button",{class:"verse-copy-btn", title:"복사", style:marked?"":"display:none;", onclick:function(e){
         e.stopPropagation();
         var h = highlightMap[highlightKey(state.book, state.chapter, v.v)];
@@ -1625,13 +1745,13 @@ function renderReading(){
           showToast("복사됐어요 — 묵상 노트에 붙여넣으세요");
         });
       }},["📋"]);
-      row.appendChild(copyBtn);
+      btnHolder.appendChild(copyBtn);
       var imageBtn = el("button",{class:"verse-copy-btn", title:"이미지로 공유", style:marked?"":"display:none;", onclick:function(e){
         e.stopPropagation();
         var h = highlightMap[highlightKey(state.book, state.chapter, v.v)];
         if(h) shareVerseImage(h);
       }},["🖼️"]);
-      row.appendChild(imageBtn);
+      btnHolder.appendChild(imageBtn);
       /* 본문 터치 동작: 짧게 터치하면 위/아래 바를 숨기거나 다시 보이게 하고(넓게 보기 전환),
          길게 눌러야(꾹 누르기) 하이라이트가 켜지거나 꺼진다. 스크롤하려고 손가락을 움직인
          경우는 둘 다 무시한다. 복사/이미지 아이콘을 누른 경우도 제외한다. */
@@ -1857,6 +1977,12 @@ var MANUAL_SECTIONS = [
     "검색 범위를 **전체 · 구약 · 신약**으로 고르거나, 아래 칸에서 책을 직접 지정할 수 있습니다(예: 요한복음 ~ 사도행전). 범위를 좁히면 더 빨라요.",
     "결과를 누르면 그 구절로 바로 이동합니다."
   ]},
+  {title:"⇆ 두 번역본 대조해서 보기", items:[
+    "본문 위쪽의 **⇆ 대조** 버튼을 누르면 화면이 왼쪽·오른쪽 반반으로 나뉘어 두 번역본이 나란히 나옵니다(예: 왼쪽 개역개정, 오른쪽 NIV).",
+    "절마다 가로 구분선이 있어서, 한쪽 절이 길어도 같은 절끼리 같은 줄에서 시작합니다.",
+    "오른쪽 맨 위의 번역본 칸을 눌러 대조할 번역본을 바꿀 수 있고, 왼쪽은 화면 맨 위 번역본 칸에서 바꿉니다.",
+    "다시 **⇆ 대조 끄기**를 누르면 한 번역본만 보는 화면으로 돌아옵니다. 마지막 설정은 기억됩니다."
+  ]},
   {title:"📖 성경 번역본 바꾸기", items:[
     "위쪽의 번역본 칸(예: **개역개정**)을 누르면 개역한글판, 새번역, 쉬운성경, 영어 성경 등으로 바꿀 수 있습니다.",
     "보고 있던 책과 장은 그대로 유지됩니다."
@@ -1871,6 +1997,10 @@ var MANUAL_SECTIONS = [
     "말씀을 찾으러 잠깐 들어갔다 나온 것은 읽음으로 기록되지 않아요. 직접 체크한 장만 표시됩니다.",
     "책 목록에서 각 책을 얼마나 읽었는지 볼 수 있습니다.",
     "처음부터 다시 시작하고 싶으면 **⋯** → **✅ 읽음 표시 모두 지우기**를 두 번 누르세요."
+  ]},
+  {title:"🎨 화면 색 (검은 바탕 / 밝은 바탕)", items:[
+    "기본은 글씨가 잘 보이도록 **검은 바탕에 흰 글씨**입니다.",
+    "**⋯** → **🎨 화면 색**에서 **밝은 바탕**이나 **휴대폰 설정**(휴대폰의 다크 모드를 따름)으로 바꿀 수 있습니다."
   ]},
   {title:"🔠 글자 크기", items:[
     "**⋯** → **본문 글자 크기**의 **가−/가+**로 본문 글자를 줄이거나 키울 수 있습니다.",
@@ -1933,6 +2063,20 @@ function openSettingsModal(){
     ])
   ]);
   sheet.appendChild(fontSizeRow);
+  /* 화면 색 고르기 */
+  var themeBtns = {};
+  function themeBtn(key, label){
+    var b = el("button",{class:"btn" + (getTheme() === key ? " active" : ""), onclick:function(){
+      lsSet(LS_THEME, key); applyTheme(key);
+      Object.keys(themeBtns).forEach(function(k){ themeBtns[k].classList.toggle("active", k === key); });
+    }},[label]);
+    themeBtns[key] = b;
+    return b;
+  }
+  sheet.appendChild(el("div",{class:"theme-row"},[
+    el("div",{class:"label"},["🎨 화면 색"]),
+    el("div",{class:"controls"},[ themeBtn("black","검은 바탕"), themeBtn("light","밝은 바탕"), themeBtn("auto","휴대폰 설정") ])
+  ]));
   var importInput = el("input",{type:"file", accept:"application/json", style:"display:none;"});
   var importWarning = el("div",{class:"error-box", style:"display:none; margin-bottom:12px; line-height:1.7;"},[
     "⚠️ 가져오면 지금 있는 읽음 기록·하이라이트·메모·설정이 이 파일 내용으로 덮어써집니다.",

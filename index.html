@@ -199,7 +199,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-02-4">
+<meta name="app-build" content="2026-10-03-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1756,8 +1756,12 @@ function renderReading(){
          길게 눌러야(꾹 누르기) 하이라이트가 켜지거나 꺼진다. 스크롤하려고 손가락을 움직인
          경우는 둘 다 무시한다. 복사/이미지 아이콘을 누른 경우도 제외한다. */
       (function(){
-        var LONG_PRESS_MS = 500, MOVE_TOLERANCE = 10;
+        /* 누르고 있는 시간: 이 장에서 처음 고를 때는 0.3초, 이미 한 구절이라도 골라져 있으면
+           (이어서 여러 구절을 고르는 중이므로) 0.1초만 눌러도 바로 선택/해제되어 쭉쭉 고를 수 있다. */
+        var FIRST_PRESS_MS = 300, NEXT_PRESS_MS = 100, MOVE_TOLERANCE = 10;
         var pressTimer = null, startX = 0, startY = 0, longPressFired = false, pointerActive = false, cancelled = false;
+        var selectingAtPress = false;
+        function isSelecting(){ return !!verseWrap.querySelector(".verse-row.user-mark"); }
         function clearPressTimer(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; } }
         function isOnIconBtn(e){ return e.target && e.target.closest && e.target.closest(".verse-copy-btn"); }
         function doHighlightToggle(){
@@ -1773,13 +1777,14 @@ function renderReading(){
           if(e.button !== undefined && e.button > 0) return;
           pointerActive = true; longPressFired = false; cancelled = false;
           startX = e.clientX; startY = e.clientY;
+          selectingAtPress = isSelecting();
           clearPressTimer();
           pressTimer = setTimeout(function(){
             pressTimer = null;
             if(!pointerActive || cancelled) return;
             longPressFired = true;
             doHighlightToggle();
-          }, LONG_PRESS_MS);
+          }, selectingAtPress ? NEXT_PRESS_MS : FIRST_PRESS_MS);
         });
         row.addEventListener("pointermove", function(e){
           if(!pointerActive || cancelled) return;
@@ -1791,7 +1796,9 @@ function renderReading(){
           if(!pointerActive) return;
           pointerActive = false;
           clearPressTimer();
-          if(!cancelled && !longPressFired && !isOnIconBtn(e)) toggleImmersive();
+          /* 여러 구절을 고르는 중에는, 0.1초도 안 되게 스치듯 누른 경우 화면(위·아래 바)이 갑자기
+             숨겨지지 않도록 아무 동작도 하지 않는다. 고르는 중이 아닐 때만 짧게 터치 = 넓게 보기. */
+          if(!cancelled && !longPressFired && !isOnIconBtn(e) && !selectingAtPress) toggleImmersive();
           longPressFired = false; cancelled = false;
         }
         row.addEventListener("pointerup", endPress);
@@ -1961,7 +1968,8 @@ var MANUAL_SECTIONS = [
     "켜둔 상태는 기억해 두었다가 다음에 읽을 때도 그대로 적용됩니다."
   ]},
   {title:"⭐ 하이라이트 · 복사 · 이미지 공유", items:[
-    "마음에 닿는 구절을 **0.5초 정도 꾹 누르면** 바탕색이 칠해집니다(하이라이트). 다시 꾹 누르면 지워집니다.",
+    "마음에 닿는 구절을 **0.3초 정도 꾹 누르면** 바탕색이 칠해집니다(하이라이트). 다시 꾹 누르면 지워집니다.",
+    "한 구절을 고른 뒤에는 같은 장의 다른 구절을 **살짝(0.1초)만 눌러도** 바로 골라져서, 여러 구절을 쭉쭉 고를 수 있습니다.",
     "하이라이트한 구절 옆의 **📋**를 누르면 구절이 복사되어 카카오톡·메모 등에 붙여넣을 수 있어요.",
     "**🖼️**를 누르면 그 구절이 예쁜 이미지 카드로 만들어져 카카오톡 등으로 바로 보내거나 저장할 수 있습니다.",
     "여러 구절을 하이라이트하면 아래에 **○개 구절 선택됨** 줄이 나타납니다. **📋 선택 복사**를 누르면 고른 구절을 한꺼번에 복사합니다. 예: 로마서 5:6,8 → 본문 … 본문 (로마서 5:6,8 개역개정)",

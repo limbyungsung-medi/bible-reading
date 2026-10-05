@@ -56,7 +56,7 @@
     color-scheme: dark;
   }
   *{box-sizing:border-box;}
-  body{background:var(--bg); color:var(--text); font-family:var(--font-ui); font-variant-numeric:tabular-nums;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--font-ui); font-variant-numeric:tabular-nums;}
   #app{max-width:720px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
   header{position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--border); padding:10px 14px;}
   .topbar{display:flex; align-items:center; gap:8px;}
@@ -106,9 +106,9 @@
   .verse-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:7px;}
   .verse-row.highlight{background:var(--accent-soft); border-radius:8px; scroll-margin-top:70px;}
   .verse-view{display:flex; flex-direction:column; gap:2px;}
-  .verse-row{display:flex; gap:8px; padding:7px 2px; font-size:var(--verse-font-size,16px); line-height:1.75; border-radius:8px; cursor:pointer; align-items:flex-start; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  .verse-row{display:flex; gap:5px; padding:5px 3px 5px 1px; font-size:var(--verse-font-size,16px); line-height:1.58; border-radius:8px; cursor:pointer; align-items:flex-start; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
   .verse-row.user-mark{background:var(--mark-bg); box-shadow:inset 2px 0 0 var(--mark-border);}
-  .verse-num{font-family:var(--font-serif); color:var(--accent); font-weight:700; font-size:12.5px; min-width:22px; padding-top:3px;}
+  .verse-num{font-family:var(--font-serif); color:var(--accent); font-weight:700; font-size:12.5px; min-width:15px; padding-top:2px; text-align:left;}
   .verse-text{flex:1; font-family:var(--font-serif);}
   /* 두 번역본 대조 보기: 왼쪽/오른쪽 반반, 절마다 가로 구분선. 한 절의 길이가 서로 달라도
      같은 절은 항상 같은 줄(높이)에서 시작하도록 한 줄(row)에 두 칸을 나란히 둔다. */
@@ -117,8 +117,8 @@
   .par-head > div:first-child{border-right:1px solid var(--border);}
   .par-head select{width:100%; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); border-radius:8px; padding:5px 6px; font-size:13px; font-weight:700;}
   .verse-view.parallel{gap:0;}
-  .verse-row.parallel{padding:0; gap:0; border-radius:0; align-items:stretch; border-bottom:1px solid var(--border); font-size:calc(var(--verse-font-size,16px) * 0.92); line-height:1.65;}
-  .verse-row.parallel .par-col{flex:1; min-width:0; padding:8px 6px; display:flex; flex-direction:column; gap:2px;}
+  .verse-row.parallel{padding:0; gap:0; border-radius:0; align-items:stretch; border-bottom:1px solid var(--border); font-size:calc(var(--verse-font-size,16px) * 0.92); line-height:1.5;}
+  .verse-row.parallel .par-col{flex:1; min-width:0; padding:6px 4px; display:flex; flex-direction:column; gap:2px;}
   .verse-row.parallel .par-col.left{border-right:1px solid var(--border);}
   .verse-row.parallel .par-col .verse-num{min-width:0; padding-top:0;}
   .verse-row.parallel .par-col .par-missing{color:var(--text-dim); font-size:12px;}
@@ -148,6 +148,9 @@
      본문만 크게 본다. 되돌리는 버튼은 항상 화면 위에 떠 있어야 하므로 숨김 대상에서 뺀다. */
   body.immersive header, body.immersive .chapter-nav, body.immersive .audio-bar, body.immersive .selection-bar{display:none !important;}
   body.immersive main{padding:14px 14px 24px;}
+  /* 성경 본문 화면은 좌우 여백을 최소로 해서 본문을 넓게 쓴다 */
+  body.reading main{padding-left:6px; padding-right:6px;}
+  body.reading.immersive main{padding-left:6px; padding-right:6px;}
   .immersive-toggle{position:fixed; top:10px; right:10px; z-index:9; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); box-shadow:var(--shadow); font-size:16px; cursor:pointer;}
   /* 넓게 보기가 꺼져 있을 때는 이 버튼을 헤더 줄 안(⋯ 설정 버튼 왼쪽)에 넣어서, 설정 버튼을 가리지 않게 한다 */
   header .immersive-toggle{position:static; border-radius:9px; box-shadow:var(--shadow);}
@@ -199,7 +202,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-04-1">
+<meta name="app-build" content="2026-10-04-2">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1581,6 +1584,7 @@ function renderReading(){
      있게 한다. 마지막으로 켜둔 상태를 기억해뒀다가 다음에 읽기 화면을 열 때도 그대로 켜준다.
      되돌리는 버튼은 숨김 대상이 아니라 항상 화면 위에 떠 있어야 하므로 document.body에 직접
      붙이고, 숨겨진 것들과 무관하게 z-index를 가장 높게 둔다. */
+  document.body.classList.add("reading");
   if(lsGet(LS_IMMERSIVE, false)) document.body.classList.add("immersive");
   /* 우상단 버튼과 "본문 짧게 터치" 둘 다 이 함수를 통해 켜고 끈다. */
   function toggleImmersive(){
@@ -1947,6 +1951,7 @@ render = function(){
   /* "넓게 보기"는 성경읽기 화면에서만 의미가 있다 — 다른 화면(책 목록 등)으로 나가면
      헤더가 다시 보여야 하니 여기서 일단 끄고, renderReading()이 저장된 설정을 보고 다시 켠다. */
   document.body.classList.remove("immersive");
+  document.body.classList.remove("reading");
   _origRender();
 };
 

@@ -105,8 +105,13 @@
   .verse-btn{font-family:var(--font-serif); aspect-ratio:1; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:13.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center;}
   .verse-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:7px;}
   .verse-row.highlight{background:var(--accent-soft); border-radius:8px; scroll-margin-top:70px;}
-  .verse-view{display:flex; flex-direction:column; gap:2px;}
-  .verse-row{display:flex; gap:5px; padding:5px 3px 5px 1px; font-size:var(--verse-font-size,16px); line-height:1.58; border-radius:8px; cursor:pointer; align-items:flex-start; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  /* 본문은 인쇄된 성경처럼: 절 번호를 본문 맨 앞에 작게 붙이고, 줄이 넘어가면 번호 밑까지
+     왼쪽 끝부터 채우며, 양쪽 끝을 반듯하게 맞춰(양쪽 정렬) 화면 폭을 꽉 채운다. */
+  .verse-view{display:flex; flex-direction:column; gap:0;}
+  .verse-row{display:block; padding:3px 2px; font-size:var(--verse-font-size,16px); line-height:1.6; text-align:justify; border-radius:6px; cursor:pointer; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  .verse-row:not(.parallel) .verse-num{display:inline; min-width:0; padding:0; margin-right:4px; font-size:12px; vertical-align:1px;}
+  .verse-row:not(.parallel) .verse-text{display:inline;}
+  .verse-row:not(.parallel) .verse-copy-btn{vertical-align:-1px; padding:0 3px;}
   .verse-row.user-mark{background:var(--mark-bg); box-shadow:inset 2px 0 0 var(--mark-border);}
   .verse-num{font-family:var(--font-serif); color:var(--accent); font-weight:700; font-size:12.5px; min-width:15px; padding-top:2px; text-align:left;}
   .verse-text{flex:1; font-family:var(--font-serif);}
@@ -117,12 +122,15 @@
   .par-head > div:first-child{border-right:1px solid var(--border);}
   .par-head select{width:100%; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); border-radius:8px; padding:5px 6px; font-size:13px; font-weight:700;}
   .verse-view.parallel{gap:0;}
-  .verse-row.parallel{padding:0; gap:0; border-radius:0; align-items:stretch; border-bottom:1px solid var(--border); font-size:calc(var(--verse-font-size,16px) * 0.92); line-height:1.5;}
-  .verse-row.parallel .par-col{flex:1; min-width:0; padding:6px 4px; display:flex; flex-direction:column; gap:2px;}
+  .verse-row.parallel{display:flex; text-align:justify; padding:0; gap:0; border-radius:0; align-items:stretch; border-bottom:1px solid var(--border); font-size:calc(var(--verse-font-size,16px) * 0.92); line-height:1.5;}
+  .verse-row.parallel .par-col{flex:1; min-width:0; padding:5px 4px; display:block;}
+  /* 좁은 칸에서 영어를 양쪽 정렬하면 단어 사이가 크게 벌어지므로 영어 칸은 왼쪽 정렬 */
+  .verse-row.parallel .par-col.latin{text-align:left;}
   .verse-row.parallel .par-col.left{border-right:1px solid var(--border);}
-  .verse-row.parallel .par-col .verse-num{min-width:0; padding-top:0;}
-  .verse-row.parallel .par-col .par-missing{color:var(--text-dim); font-size:12px;}
-  .verse-row.parallel .par-actions{display:flex; gap:2px;}
+  .verse-row.parallel .par-col .verse-num{display:inline; min-width:0; padding:0; margin-right:3px; font-size:11.5px;}
+  .verse-row.parallel .par-col .verse-text{display:inline;}
+  .verse-row.parallel .par-col .par-missing{display:inline; color:var(--text-dim); font-size:12px;}
+  .verse-row.parallel .par-actions{display:inline; margin-left:2px;}
   .par-toggle{font-size:12.5px; padding:5px 10px; border-radius:100px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); font-weight:700; cursor:pointer; white-space:nowrap;}
   .par-toggle.on{background:var(--accent); border-color:var(--accent); color:#000;}
   .theme-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; margin-bottom:12px;}
@@ -149,8 +157,9 @@
   body.immersive header, body.immersive .chapter-nav, body.immersive .audio-bar, body.immersive .selection-bar{display:none !important;}
   body.immersive main{padding:14px 14px 24px;}
   /* 성경 본문 화면은 좌우 여백을 최소로 해서 본문을 넓게 쓴다 */
-  body.reading main{padding-left:6px; padding-right:6px;}
-  body.reading.immersive main{padding-left:6px; padding-right:6px;}
+  body.immersive .reading-head{padding-right:46px;} /* 떠 있는 ⤡ 버튼이 "읽음으로 표시"를 가리지 않게 */
+  body.reading main{padding-left:6px; padding-right:6px; padding-top:8px;}
+  body.reading.immersive main{padding-left:6px; padding-right:6px; padding-top:8px;}
   .immersive-toggle{position:fixed; top:10px; right:10px; z-index:9; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); box-shadow:var(--shadow); font-size:16px; cursor:pointer;}
   /* 넓게 보기가 꺼져 있을 때는 이 버튼을 헤더 줄 안(⋯ 설정 버튼 왼쪽)에 넣어서, 설정 버튼을 가리지 않게 한다 */
   header .immersive-toggle{position:static; border-radius:9px; box-shadow:var(--shadow);}
@@ -202,7 +211,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-04-2">
+<meta name="app-build" content="2026-10-05-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1617,7 +1626,7 @@ function renderReading(){
   var par = lsGet(LS_PARALLEL, {on:false, version:null});
   var parOn = !!par.on && Object.keys(state.lfaFiles).length > 1;
   var parVersion = pickParallelVersion(par.version);
-  var head = el("div",{class:"row", style:"justify-content:space-between; margin-bottom:10px; gap:8px; flex-wrap:wrap;"},[
+  var head = el("div",{class:"row reading-head", style:"justify-content:space-between; margin-bottom:4px; gap:8px; flex-wrap:wrap;"},[
     el("div",{style:"font-weight:700; font-size:16px;"},[book.ko + " " + state.chapter + "장" + (state.targetVerse ? (" " + state.targetVerse + "절") : "")]),
     el("button",{class:"par-toggle" + (parOn ? " on" : ""), title:"두 번역본을 나란히 대조해서 보기", onclick:function(){
       if(Object.keys(state.lfaFiles).length < 2){ showToast("대조하려면 번역본이 2개 이상 있어야 해요"); return; }
@@ -1729,12 +1738,12 @@ function renderReading(){
       var row = el("div",{class:"verse-row"+(parOn?" parallel":"")+(isTarget?" highlight":"")+(marked?" user-mark":"")});
       var btnHolder = row;
       if(parOn){
-        var left = el("div",{class:"par-col left"},[
+        var left = el("div",{class:"par-col left" + (/[가-힣]/.test(v.text||"") ? "" : " latin")},[
           el("div",{class:"verse-num"},[String(v.v)]),
           v.text ? el("div",{class:"verse-text"},[v.text]) : el("div",{class:"par-missing"},["(이 번역본에는 없는 절)"])
         ]);
         var t2 = byNum2[v.v];
-        var right = el("div",{class:"par-col right"},[
+        var right = el("div",{class:"par-col right" + (/[가-힣]/.test(t2||"") ? "" : " latin")},[
           el("div",{class:"verse-num"},[String(v.v)]),
           (t2 !== undefined) ? el("div",{class:"verse-text"},[t2]) : el("div",{class:"par-missing"},[verses2 ? "(이 번역본에는 없는 절)" : "(이 번역본에는 이 장이 없어요)"])
         ]);

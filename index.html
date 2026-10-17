@@ -18,6 +18,10 @@
     --ctrl-border:#c9be9f; --ctrl-bg:#ffffff;
     --font-serif:"Source Serif 4",Georgia,"Noto Serif KR",serif;
     --font-ui:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    /* 한글 성경 본문 글꼴: 기본은 휴대폰에 들어 있는 고딕체(삼성폰은 삼성 기본 글꼴, 아이폰은 애플 고딕)
+       — 여러 분이 고딕이 더 잘 보인다고 하셔서. 영어 본문은 그대로 세리프(Source Serif 4). */
+    --font-ko:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+    --font-bible:"Source Serif 4",Georgia,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark){
@@ -113,6 +117,9 @@
   .verse-row:not(.parallel) .verse-text{display:inline;}
   .verse-row:not(.parallel) .verse-copy-btn{vertical-align:-1px; padding:0 3px;}
   .verse-row.user-mark{background:var(--mark-bg); box-shadow:inset 2px 0 0 var(--mark-border);}
+  :root[data-kofont="serif"]{--font-ko:"Noto Serif KR",serif; --font-bible:"Source Serif 4",Georgia,"Noto Serif KR",serif;}
+  /* 한글이 들어 있는 절(.ko)은 절 번호까지 한글 글꼴로, 영어 절은 세리프 그대로 */
+  .verse-row.ko .verse-num, .verse-row.ko .verse-text, .par-col.ko .verse-num, .par-col.ko .verse-text{font-family:var(--font-ko);}
   .verse-num{font-family:var(--font-serif); color:var(--accent); font-weight:700; font-size:12.5px; min-width:15px; padding-top:2px; text-align:left;}
   .verse-text{flex:1; font-family:var(--font-serif);}
   /* 두 번역본 대조 보기: 왼쪽/오른쪽 반반, 절마다 가로 구분선. 한 절의 길이가 서로 달라도
@@ -142,7 +149,7 @@
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
   .highlight-item{background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--mark-border); border-radius:10px; padding:10px 12px; margin-bottom:8px;}
   .highlight-item .ref{font-family:var(--font-serif); font-size:11.5px; color:var(--accent); font-weight:700; margin-bottom:4px;}
-  .highlight-item .txt{font-family:var(--font-serif); font-size:14px; line-height:1.6; margin-bottom:6px;}
+  .highlight-item .txt{font-family:var(--font-bible); font-size:14px; line-height:1.6; margin-bottom:6px;}
   .highlight-item .txt mark{background:var(--mark-bg); color:inherit; padding:0 1px; border-radius:2px;}
   .highlight-item textarea{width:100%; margin-bottom:8px; border:1px solid var(--border); border-radius:8px; padding:7px 8px; font-size:12.5px; font-family:inherit; background:var(--bg); color:var(--text); resize:vertical; min-height:42px;}
   .search-range-label{font-size:11.5px; color:var(--text-dim); margin:10px 0 4px;}
@@ -211,7 +218,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-05-1">
+<meta name="app-build" content="2026-10-17-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -251,6 +258,11 @@ function applyTheme(t){
   else document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "black");
 }
 applyTheme(getTheme());
+/* 한글 본문 글꼴: "gothic"(고딕, 기본) / "serif"(명조) */
+var LS_KOFONT = "bible_kofont_v1";
+function getKoFont(){ try{ return JSON.parse(localStorage.getItem(LS_KOFONT) || "null") === "serif" ? "serif" : "gothic"; }catch(e){ return "gothic"; } }
+function applyKoFont(f){ if(f === "serif") document.documentElement.setAttribute("data-kofont","serif"); else document.documentElement.removeAttribute("data-kofont"); }
+applyKoFont(getKoFont());
 
 /* ---------- 66권 성경 메타데이터 ---------- */
 var BOOKS = [
@@ -1735,15 +1747,15 @@ function renderReading(){
     verses.forEach(function(v){
       var isTarget = state.targetVerse && v.v === state.targetVerse;
       var marked = isHighlighted(state.book, state.chapter, v.v);
-      var row = el("div",{class:"verse-row"+(parOn?" parallel":"")+(isTarget?" highlight":"")+(marked?" user-mark":"")});
+      var row = el("div",{class:"verse-row"+(parOn?" parallel":"")+(!parOn && /[가-힣]/.test(v.text||"") ? " ko" : "")+(isTarget?" highlight":"")+(marked?" user-mark":"")});
       var btnHolder = row;
       if(parOn){
-        var left = el("div",{class:"par-col left" + (/[가-힣]/.test(v.text||"") ? "" : " latin")},[
+        var left = el("div",{class:"par-col left" + (/[가-힣]/.test(v.text||"") ? " ko" : " latin")},[
           el("div",{class:"verse-num"},[String(v.v)]),
           v.text ? el("div",{class:"verse-text"},[v.text]) : el("div",{class:"par-missing"},["(이 번역본에는 없는 절)"])
         ]);
         var t2 = byNum2[v.v];
-        var right = el("div",{class:"par-col right" + (/[가-힣]/.test(t2||"") ? "" : " latin")},[
+        var right = el("div",{class:"par-col right" + (/[가-힣]/.test(t2||"") ? " ko" : " latin")},[
           el("div",{class:"verse-num"},[String(v.v)]),
           (t2 !== undefined) ? el("div",{class:"verse-text"},[t2]) : el("div",{class:"par-missing"},[verses2 ? "(이 번역본에는 없는 절)" : "(이 번역본에는 이 장이 없어요)"])
         ]);
@@ -2034,9 +2046,10 @@ var MANUAL_SECTIONS = [
     "기본은 글씨가 잘 보이도록 **검은 바탕에 흰 글씨**입니다.",
     "**⋯** → **🎨 화면 색**에서 **밝은 바탕**이나 **휴대폰 설정**(휴대폰의 다크 모드를 따름)으로 바꿀 수 있습니다."
   ]},
-  {title:"🔠 글자 크기", items:[
+  {title:"🔠 글자 크기 · 글꼴", items:[
     "**⋯** → **본문 글자 크기**의 **가−/가+**로 본문 글자를 줄이거나 키울 수 있습니다.",
-    "바꾼 크기는 기억되어 다음에도 그대로 적용됩니다."
+    "한글 본문은 잘 보이는 **고딕체**가 기본입니다. 종이 성경처럼 명조(바탕)체가 좋으면 **⋯** → **🔤 한글 글꼴**에서 **명조**를 누르세요(영어 본문 글꼴은 그대로).",
+    "바꾼 크기와 글꼴은 기억되어 다음에도 그대로 적용됩니다."
   ]},
   {title:"💾 내 자료 백업 · 다른 폰으로 옮기기", items:[
     "**⋯** → **⬇️ 내 자료 내보내기**를 누르면 하이라이트, 메모, 읽음 기록, 글자 크기가 파일 하나로 저장됩니다.",
@@ -2095,6 +2108,20 @@ function openSettingsModal(){
     ])
   ]);
   sheet.appendChild(fontSizeRow);
+  /* 한글 본문 글꼴 고르기 */
+  var koFontBtns = {};
+  function koFontBtn(key, label){
+    var b = el("button",{class:"btn" + (getKoFont() === key ? " active" : ""), onclick:function(){
+      lsSet(LS_KOFONT, key); applyKoFont(key);
+      Object.keys(koFontBtns).forEach(function(k){ koFontBtns[k].classList.toggle("active", k === key); });
+    }},[label]);
+    koFontBtns[key] = b;
+    return b;
+  }
+  sheet.appendChild(el("div",{class:"theme-row"},[
+    el("div",{class:"label"},["🔤 한글 글꼴"]),
+    el("div",{class:"controls"},[ koFontBtn("gothic","고딕"), koFontBtn("serif","명조") ])
+  ]));
   /* 화면 색 고르기 */
   var themeBtns = {};
   function themeBtn(key, label){

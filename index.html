@@ -60,6 +60,9 @@
     color-scheme: dark;
   }
   *{box-sizing:border-box;}
+  /* 안드로이드 크롬은 누른 곳에 연한 파란 상자를 번쩍 띄운다 — 본문을 누를 때 "번개" 같아서 앱 전체에서 끈다 */
+  *{-webkit-tap-highlight-color:transparent;}
+  html{-webkit-tap-highlight-color:rgba(0,0,0,0);}
   /* 글자를 누르면 크롬의 "터치하여 검색"(구글 검색창)이 아래에서 올라오는 것을 막는다 —
      화면의 글자를 선택할 수 없게 하면 뜨지 않는다. 검색어·메모 입력칸만 예외. */
   body{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
@@ -234,7 +237,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-18-2">
+<meta name="app-build" content="2026-10-18-3">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">

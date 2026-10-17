@@ -60,6 +60,10 @@
     color-scheme: dark;
   }
   *{box-sizing:border-box;}
+  /* 글자를 누르면 크롬의 "터치하여 검색"(구글 검색창)이 아래에서 올라오는 것을 막는다 —
+     화면의 글자를 선택할 수 없게 하면 뜨지 않는다. 검색어·메모 입력칸만 예외. */
+  body{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  input, textarea, [contenteditable="true"]{-webkit-user-select:text; user-select:text; -webkit-touch-callout:default;}
   body{margin:0; background:var(--bg); color:var(--text); font-family:var(--font-ui); font-variant-numeric:tabular-nums;}
   #app{max-width:720px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
   header{position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--border); padding:10px 14px;}
@@ -218,7 +222,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-17-1">
+<meta name="app-build" content="2026-10-17-2">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">

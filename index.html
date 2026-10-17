@@ -66,6 +66,12 @@
   input, textarea, [contenteditable="true"]{-webkit-user-select:text; user-select:text; -webkit-touch-callout:default;}
   body{margin:0; background:var(--bg); color:var(--text); font-family:var(--font-ui); font-variant-numeric:tabular-nums;}
   #app{max-width:720px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+  /* 화면은 절대 옆으로 밀리지 않게 한다. 다음 장이 오른쪽에서 밀려 들어오는 짧은 순간 화면 폭이
+     넓어지면, 손가락으로 민 관성이 페이지 전체(머리줄까지)를 옆으로 끌고 갔다가 되돌아와 "움찔"했다.
+     (이전 장은 왼쪽에서 들어와 폭이 넓어지지 않아서 괜찮았음) */
+  html{overflow-x:hidden; overscroll-behavior-x:none;}
+  #app{overflow-x:clip;}
+  body.reading main{touch-action:pan-y pinch-zoom;}
   header{position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--border); padding:10px 14px;}
   .topbar{display:flex; align-items:center; gap:8px;}
   .brand{font-family:var(--font-serif); font-weight:600; font-size:16px; letter-spacing:.2px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -228,7 +234,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-18-1">
+<meta name="app-build" content="2026-10-18-2">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1729,10 +1735,19 @@ function renderReading(){
     ]);
     wrap.insertBefore(parHead, verseWrap);
     verseWrap.classList.add("parallel");
-    requestAnimationFrame(function(){
+    /* 번역본 이름 줄은 헤더 바로 밑에 붙어 있어야 한다 — 헤더 높이는 "저장 완료" 안내 등이
+       사라질 때 바뀌므로 바뀔 때마다 다시 맞춘다(안 그러면 그 사이에 빈 틈이 생김) */
+    var syncParHeadTop = function(){
       var h = document.querySelector("header");
       parHead.style.top = (h && !document.body.classList.contains("immersive") ? h.offsetHeight : 0) + "px";
-    });
+    };
+    requestAnimationFrame(syncParHeadTop);
+    var hdrEl = document.querySelector("header");
+    if(window.ResizeObserver && hdrEl){
+      if(state._jumpBarRO) state._jumpBarRO.disconnect();
+      state._jumpBarRO = new ResizeObserver(function(){ syncParHeadTop(); });
+      state._jumpBarRO.observe(hdrEl);
+    }
   }
   Promise.all([
     getChapterVerses(state.version, state.book, state.chapter),

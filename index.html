@@ -244,7 +244,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-18-4">
+<meta name="app-build" content="2026-10-19-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -454,6 +454,40 @@ function formatSelectionForCopy(items){
   var versionInfo = state.lfaFiles && state.lfaFiles[state.version];
   var versionLabel = versionInfo ? labelForFile(versionInfo.displayName) : state.version;
   return body + " (" + (book ? book.ko : items[0].book) + " " + items[0].chapter + ":" + verseList + " " + versionLabel + ")";
+}
+/* ---------- 말씀암송 앱으로 보내기 ----------
+   같은 주소(limbyungsung-medi.github.io) 아래의 암송 앱(/bible-memory/)과 기기 저장 공간을 함께 쓴다.
+   고른 구절을 "amsong_inbox_v1"(받은 구절 보관함)에 넣어 두고, 암송 앱을 #add=… 로 열어
+   주소·본문·번역본이 채워진 "새 구절 만들기" 화면을 바로 띄운다. */
+var AMSONG_INBOX = "amsong_inbox_v1";
+function amsongUrl(){ return new URL("../bible-memory/", location.href).href; }
+function b64urlJSON(o){
+  var bytes = new TextEncoder().encode(JSON.stringify(o)), bin = "";
+  for(var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function sendToAmsong(items){
+  if(!items.length) return;
+  var body = "";
+  for(var i=0;i<items.length;i++){
+    if(i>0) body += (items[i].verse === items[i-1].verse + 1) ? " " : " …";
+    body += items[i].text;
+  }
+  var versionInfo = state.lfaFiles && state.lfaFiles[state.version];
+  var p = {id:"r"+Date.now().toString(36), b:items[0].book, ch:items[0].chapter,
+    vs:items.map(function(h){ return h.verse; }), t:body,
+    ver: versionInfo ? labelForFile(versionInfo.displayName) : state.version, vk: state.version, at:Date.now()};
+  try{
+    var box = JSON.parse(localStorage.getItem(AMSONG_INBOX) || "[]");
+    if(!Array.isArray(box)) box = [];
+    box.push(p); while(box.length > 50) box.shift();
+    localStorage.setItem(AMSONG_INBOX, JSON.stringify(box));
+  }catch(e){}
+  var url = amsongUrl() + "#add=" + b64urlJSON(p);
+  var w = null;
+  try{ w = window.open(url, "_blank"); }catch(e){}
+  if(!w) location.href = url;
+  showToast("암송 앱으로 보냈어요");
 }
 function allHighlights(){
   return Object.keys(highlightMap).map(function(k){ return highlightMap[k]; }).sort(function(a,b){
@@ -1720,6 +1754,7 @@ function renderReading(){
       var combined = formatSelectionForCopy(items);
       copyText(combined).then(function(){ showToast(items.length + "개 구절을 한꺼번에 복사했어요"); });
     }},["📋 선택 복사"]));
+    btnRow.appendChild(el("button",{class:"btn btn-ghost", onclick:function(){ sendToAmsong(items); }},["📖 암송에 추가"]));
     btnRow.appendChild(el("button",{class:"btn btn-ghost", style:"color:var(--danger);", onclick:function(){
       items.forEach(function(h){ toggleHighlight(h.book,h.chapter,h.verse,h.text); });
       verseWrap.querySelectorAll(".verse-row.user-mark").forEach(function(r){
@@ -2282,6 +2317,11 @@ var MANUAL_SECTIONS = [
     "**🖼️**를 누르면 그 구절이 예쁜 이미지 카드로 만들어져 카카오톡 등으로 바로 보내거나 저장할 수 있습니다.",
     "여러 구절을 하이라이트하면 아래에 **○개 구절 선택됨** 줄이 나타납니다. **📋 선택 복사**를 누르면 고른 구절을 한꺼번에 복사합니다. 예: 로마서 5:6,8 → 본문 … 본문 (로마서 5:6,8 개역개정)",
     "**선택 해제**를 누르면 이 장의 하이라이트를 한 번에 지웁니다."
+  ]},
+  {title:"📖 암송 구절로 보내기", items:[
+    "외우고 싶은 구절을 꾹 눌러 고른 뒤, 아래 줄의 **📖 암송에 추가**를 누르세요.",
+    "**말씀암송 앱**이 열리면서 주소·본문·번역본이 채워진 **새 구절 만들기** 화면이 나옵니다. 카테고리만 고르고 **저장**하면 끝!",
+    "저장한 구절은 다른 암송 구절과 똑같이 오늘의 복습·짝 점검에 나옵니다."
   ]},
   {title:"✍️ 묵상 메모 · 하이라이트 모아보기", items:[
     "오른쪽 위 **⋯** → **⭐ 하이라이트 모아보기**를 누르면 그동안 표시한 구절을 모두 볼 수 있어요.",

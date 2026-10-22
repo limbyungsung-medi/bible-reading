@@ -127,6 +127,11 @@
   .verse-btn{font-family:var(--font-serif); aspect-ratio:1; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:13.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center;}
   .verse-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:7px;}
   .verse-row.highlight{background:var(--accent-soft); border-radius:8px; scroll-margin-top:70px;}
+  /* 암송 앱에서 들어온 구절(여러 절): 이어진 절은 한 덩어리로 보이게 */
+  .verse-row.target-row{box-shadow:inset 3px 0 0 var(--accent);}
+  .verse-row.target-row + .verse-row.target-row{border-top-left-radius:0; border-top-right-radius:0;}
+  .verse-row.target-row:has(+ .verse-row.target-row){border-bottom-left-radius:0; border-bottom-right-radius:0;}
+  .amsong-back{border:1px solid var(--ctrl-border, var(--border)); background:var(--ctrl-bg, var(--surface)); color:var(--accent); font-weight:700; font-size:13.5px; padding:6px 12px; border-radius:999px; cursor:pointer; flex:0 0 auto;}
   /* 본문은 인쇄된 성경처럼: 절 번호를 본문 맨 앞에 작게 붙이고, 줄이 넘어가면 번호 밑까지
      왼쪽 끝부터 채우며, 양쪽 끝을 반듯하게 맞춰(양쪽 정렬) 화면 폭을 꽉 채운다. */
   .verse-view{display:flex; flex-direction:column; gap:0;}
@@ -244,7 +249,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-19-1">
+<meta name="app-build" content="2026-10-20-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -488,6 +493,69 @@ function sendToAmsong(items){
   try{ w = window.open(url, "_blank"); }catch(e){}
   if(!w) location.href = url;
   showToast("암송 앱으로 보냈어요");
+}
+/* ---------- 암송 앱에서 "앞뒤 문맥 보기"로 들어온 경우 ----------
+   암송 앱이 #go=책번호.장.절(예: 45.12.1-2, 19.119.9,11)&v=번역본&from=amsong 로 연다.
+   그 장을 열고 암송 구절들을 바탕색으로 표시해, 앞뒤 구절과 함께 문맥을 볼 수 있게 한다. */
+function parseGoHash(){
+  var h = location.hash || "";
+  var m = /[#&]go=([^&]+)/.exec(h); if(!m) return null;
+  var p = decodeURIComponent(m[1]).split(".");
+  var b = Number(p[0]), ch = Number(p[1]);
+  if(!(b >= 1 && b <= 66) || !(ch >= 1)) return null;
+  var vs = [];
+  (p[2] || "").split(",").forEach(function(seg){
+    if(!seg) return;
+    var ab = seg.split("-").map(Number);
+    if(ab[1] && ab[1] >= ab[0]){ for(var k=ab[0]; k<=ab[1] && k-ab[0] < 200; k++) vs.push(k); }
+    else if(ab[0]) vs.push(ab[0]);
+  });
+  vs = vs.filter(function(v,i){ return vs.indexOf(v) === i; }).sort(function(a,b){ return a-b; });
+  var vm = /[#&]v=([^&]+)/.exec(h);
+  return {b:b, ch:ch, vs:vs, ver: vm ? decodeURIComponent(vm[1]) : "", from: /[#&]from=amsong/.test(h)};
+}
+var pendingGo = parseGoHash();
+function findVersionKey(v){
+  if(!v || !state.lfaFiles) return null;
+  if(state.lfaFiles[v]) return v;
+  var keys = Object.keys(state.lfaFiles);
+  for(var i=0;i<keys.length;i++){
+    var info = state.lfaFiles[keys[i]];
+    if(info && labelForFile(info.displayName) === v) return keys[i];
+  }
+  return null;
+}
+/* 연결된 성경 자료가 준비된 뒤 부른다. 갈 곳이 있으면 그 장을 열고 true */
+function applyPendingGo(){
+  var g = pendingGo; if(!g) return false;
+  pendingGo = null;
+  try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+  var key = findVersionKey(g.ver);
+  if(key){ state.version = key; try{ $versionSelect.value = key; }catch(e){} }
+  state.fromAmsong = g.from;
+  goReading(g.b, g.ch, g.vs.length ? g.vs[0] : null, g.vs);
+  return true;
+}
+window.addEventListener("hashchange", function(){
+  var g = parseGoHash(); if(!g) return;
+  pendingGo = g;
+  if(state.screen !== "connect" && state.lfaFiles && Object.keys(state.lfaFiles).length) applyPendingGo();
+});
+function backToAmsong(){
+  state.fromAmsong = false;
+  /* 암송 앱에서 새 창으로 열렸으면 이 창을 닫아 암송 앱으로 돌아가고, 닫히지 않으면 암송 앱 주소로 간다 */
+  try{ window.close(); }catch(e){}
+  setTimeout(function(){ location.href = amsongUrl(); }, 250);
+}
+function compactVerses(vs){
+  var o = [], i = 0;
+  while(i < vs.length){ var j = i; while(j+1 < vs.length && vs[j+1] === vs[j]+1) j++; o.push(j > i ? vs[i]+"-"+vs[j] : String(vs[i])); i = j+1; }
+  return o.join(",");
+}
+/* 읽기 화면 제목·경로에 붙일 절 표시: 한 절이면 "16", 여러 절이면 "1-2" / "9,11" */
+function targetLabel(){
+  if(state.targetVerses && state.targetVerses.length > 1) return compactVerses(state.targetVerses);
+  return state.targetVerse ? String(state.targetVerse) : "";
 }
 function allHighlights(){
   return Object.keys(highlightMap).map(function(k){ return highlightMap[k]; }).sort(function(a,b){
@@ -1316,7 +1384,7 @@ function updateCrumbs(){
            맨 앞의 큰 "전체" 버튼과 헷갈리므로 생략) */
         if(state.targetVerse){
           parts.push(el("span",{},["›"]));
-          parts.push(el("span",{},[state.targetVerse+"절"]));
+          parts.push(el("span",{},[targetLabel()+"절"]));
         }
       } else {
         parts.push(el("span",{},[state.chapter+"장"]));
@@ -1363,11 +1431,12 @@ function goConnectScreen(){
   document.body.classList.remove("connected");
   render();
 }
-function goLetters(){ state.screen="letters"; state.book=null; state.chapter=null; render(); }
-function goChapters(bookNum){ state.screen="chapters"; state.book=bookNum; state.chapter=null; state.targetVerse=null; render(); }
-function goVerses(bookNum, chapter){ state.screen="verses"; state.book=bookNum; state.chapter=chapter; state.targetVerse=null; render(); }
-function goReading(bookNum, chapter, targetVerse){
+function goLetters(){ state.screen="letters"; state.book=null; state.chapter=null; state.targetVerses=null; state.fromAmsong=false; render(); }
+function goChapters(bookNum){ state.screen="chapters"; state.book=bookNum; state.chapter=null; state.targetVerse=null; state.targetVerses=null; render(); }
+function goVerses(bookNum, chapter){ state.screen="verses"; state.book=bookNum; state.chapter=chapter; state.targetVerse=null; state.targetVerses=null; render(); }
+function goReading(bookNum, chapter, targetVerse, targetVerses){
   state.screen="reading"; state.book=bookNum; state.chapter=chapter; state.targetVerse = targetVerse || null;
+  state.targetVerses = (targetVerses && targetVerses.length > 1) ? targetVerses.slice() : null;
   lsSet(LS_LASTPOS, {book:bookNum, chapter:chapter, version:state.version});
   render();
 }
@@ -1436,7 +1505,7 @@ async function onConnectClick(){
     }
     state._pendingReconnectHandle = null;
     updateHeaderForConnected();
-    goLetters();
+    if(!applyPendingGo()) goLetters();
     if(usedInput) cacheFilesInBackground(files);
   }catch(e){
     if(e && e.message === "no-selection") return;
@@ -1480,7 +1549,7 @@ async function onReconnectClick(){
     }
     state._pendingReconnectHandle = null;
     updateHeaderForConnected();
-    goLetters();
+    if(!applyPendingGo()) goLetters();
   }catch(e){
     errBox.textContent = "권한이 거절되었어요. '다른 폴더 새로 선택'을 눌러 다시 골라주세요.";
     errBox.style.display = "block";
@@ -1709,7 +1778,8 @@ function renderReading(){
   var parOn = !!par.on && Object.keys(state.lfaFiles).length > 1;
   var parVersion = pickParallelVersion(par.version);
   var head = el("div",{class:"row reading-head", style:"justify-content:space-between; margin-bottom:4px; gap:8px; flex-wrap:wrap;"},[
-    el("div",{style:"font-weight:700; font-size:16px;"},[book.ko + " " + state.chapter + "장" + (state.targetVerse ? (" " + state.targetVerse + "절") : "")]),
+    state.fromAmsong ? el("button",{class:"amsong-back", title:"말씀암송 앱으로 돌아가기", onclick:backToAmsong},["‹ 암송으로"]) : null,
+    el("div",{style:"font-weight:700; font-size:16px;"},[book.ko + " " + state.chapter + "장" + (state.targetVerse ? (" " + targetLabel() + "절") : "")]),
     el("button",{class:"par-toggle" + (parOn ? " on" : ""), title:"두 번역본을 나란히 대조해서 보기", onclick:function(){
       if(Object.keys(state.lfaFiles).length < 2){ showToast("대조하려면 번역본이 2개 이상 있어야 해요"); return; }
       lsSet(LS_PARALLEL, {on:!parOn, version:parVersion});
@@ -1825,7 +1895,7 @@ function renderReading(){
       verses.sort(function(a,b){ return a.v - b.v; });
     }
     verses.forEach(function(v){
-      var isTarget = state.targetVerse && v.v === state.targetVerse;
+      var isTarget = state.targetVerses ? state.targetVerses.indexOf(v.v) >= 0 : (state.targetVerse && v.v === state.targetVerse);
       var marked = isHighlighted(state.book, state.chapter, v.v);
       var row = el("div",{class:"verse-row"+(parOn?" parallel":"")+(!parOn && /[가-힣]/.test(v.text||"") ? " ko" : "")+(isTarget?" highlight":"")+(marked?" user-mark":""), "data-v":String(v.v)});
       var btnHolder = row;
@@ -1915,7 +1985,7 @@ function renderReading(){
         row.addEventListener("pointercancel", function(){ pointerActive = false; cancelled = true; clearPressTimer(); });
         row.addEventListener("contextmenu", function(e){ e.preventDefault(); });
       })();
-      if(isTarget) row.id = "targetVerseRow";
+      if(isTarget){ row.classList.add("target-row"); if(v.v === state.targetVerse) row.id = "targetVerseRow"; }
       verseWrap.appendChild(row);
     });
     /* 장 끝: 이전/다음 장 버튼. 예전처럼 화면 아래에 항상 붙어 있지 않고 본문 맨 끝에만 있어서,
@@ -1928,7 +1998,9 @@ function renderReading(){
     /* 장을 열기만 해서는 읽음으로 표시하지 않는다 — 말씀을 찾으러 잠깐 들어갔다 나와도 장 색이
        바뀌지 않도록, "읽음으로 표시"를 직접 체크했을 때만 읽음으로 기록한다. */
     if(state.targetVerse){
-      var targetEl = document.getElementById("targetVerseRow");
+      /* 여러 절이면 그 가운데 절을 화면 가운데에 두어, 암송 구절 전체와 앞뒤 구절이 함께 보이게 한다 */
+      var tRows = verseWrap.querySelectorAll(".target-row");
+      var targetEl = tRows.length > 1 ? tRows[Math.floor((tRows.length-1)/2)] : document.getElementById("targetVerseRow");
       if(targetEl) targetEl.scrollIntoView({block:"center"});
     }
   });
@@ -2321,7 +2393,8 @@ var MANUAL_SECTIONS = [
   {title:"📖 암송 구절로 보내기", items:[
     "외우고 싶은 구절을 꾹 눌러 고른 뒤, 아래 줄의 **📖 암송에 추가**를 누르세요.",
     "**말씀암송 앱**이 열리면서 주소·본문·번역본이 채워진 **새 구절 만들기** 화면이 나옵니다. 카테고리만 고르고 **저장**하면 끝!",
-    "저장한 구절은 다른 암송 구절과 똑같이 오늘의 복습·짝 점검에 나옵니다."
+    "저장한 구절은 다른 암송 구절과 똑같이 오늘의 복습·짝 점검에 나옵니다.",
+    "거꾸로 암송 앱의 구절 화면에서 **📖 앞뒤 문맥 보기**를 누르면 이 앱이 그 장으로 열리고, 암송 구절이 바탕색으로 표시됩니다. 위아래로 앞뒤 구절을 읽고, 좌우로 밀어 앞뒤 장도 볼 수 있어요. 다 보셨으면 제목 왼쪽의 **‹ 암송으로**를 누르세요."
   ]},
   {title:"✍️ 묵상 메모 · 하이라이트 모아보기", items:[
     "오른쪽 위 **⋯** → **⭐ 하이라이트 모아보기**를 누르면 그동안 표시한 구절을 모두 볼 수 있어요.",
@@ -2849,7 +2922,7 @@ if(!ENV.isInApp && !ENV.isStandalone && ENV.isAndroid && $installBtn){
       updateHeaderForConnected();
       var last = lsGet(LS_LASTPOS, null);
       if(last && last.book){ state.version = last.version && state.lfaFiles[last.version] ? last.version : state.version; }
-      goLetters();
+      if(!applyPendingGo()) goLetters();
       return;
     }
   } else if(result.status === "granted-cached"){
@@ -2859,7 +2932,7 @@ if(!ENV.isInApp && !ENV.isStandalone && ENV.isAndroid && $installBtn){
       updateHeaderForConnected();
       var last2 = lsGet(LS_LASTPOS, null);
       if(last2 && last2.book){ state.version = last2.version && state.lfaFiles[last2.version] ? last2.version : state.version; }
-      goLetters();
+      if(!applyPendingGo()) goLetters();
       return;
     }
   } else if(result.status === "needs-permission"){

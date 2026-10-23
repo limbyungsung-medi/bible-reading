@@ -119,6 +119,23 @@
   .book-jump-chip:active{background:var(--accent-soft); border-color:var(--accent);}
   .book-jump-chip.active{background:var(--accent); border-color:var(--accent); color:#fff9ef;}
   .book-list{display:flex; flex-direction:column; gap:10px;}
+  /* 첫 화면 보기 방식 고르기(분류별 / 구약·신약 목록) */
+  .list-mode{display:flex; gap:0; margin:2px 0 10px; border:1.5px solid var(--ctrl-border); border-radius:12px; overflow:hidden;}
+  .list-mode button{flex:1; padding:9px 6px; border:0; background:var(--ctrl-bg); color:var(--text-dim); font-family:var(--font-ui); font-size:14.5px; font-weight:700; cursor:pointer;}
+  .list-mode button + button{border-left:1.5px solid var(--ctrl-border);}
+  .list-mode button.on{background:var(--accent-soft); color:var(--accent);}
+  /* 간단 목록: 위쪽 구약/신약 탭 + 한 줄에 한 권 */
+  .ot-nt-tabs{position:sticky; top:0; z-index:4; display:flex; background:var(--bg); padding:6px 0 0; margin-bottom:2px; border-bottom:2px solid var(--border);}
+  .ot-nt-tabs button{flex:1; padding:12px 6px 11px; border:0; background:transparent; color:var(--text-dim); font-family:var(--font-ui); font-size:20px; font-weight:800; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;}
+  .ot-nt-tabs button small{font-size:13px; font-weight:600; margin-left:4px;}
+  .ot-nt-tabs button.on{color:var(--text); border-bottom-color:var(--accent);}
+  .simple-list{display:flex; flex-direction:column;}
+  .simple-row{display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:15px 6px; border-bottom:1px solid var(--border); cursor:pointer;}
+  .simple-row:active{background:var(--surface);}
+  .simple-row .nm{font-family:var(--font-ui); font-size:20px; font-weight:700; letter-spacing:-0.01em;}
+  .simple-row .nm small{font-size:14px; font-weight:500; color:var(--text-dim); margin-left:6px; letter-spacing:0;}
+  .simple-row .pg{flex:none; font-family:var(--font-ui); font-size:14px; color:var(--text-dim); font-weight:600; font-variant-numeric:tabular-nums;}
+  .simple-row .pg b{color:var(--accent);}
   /* 책 목록: 큼직한 고딕(프리텐다드), 번호는 흐리게, 영어 이름은 작게, 오른쪽엔 읽은 장 수 + 얇은 진행 막대 */
   .book-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 16px; background:var(--surface); border:1px solid var(--border); border-radius:14px; cursor:pointer;}
   .book-row:active{border-color:var(--accent);}
@@ -258,7 +275,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-25-1">
+<meta name="app-build" content="2026-10-26-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1592,7 +1609,53 @@ function categoryIndexForBook(n){
   return -1;
 }
 
+/* 첫 화면(책 목록) 보기 방식: "category"(분류별, 기본) / "simple"(구약·신약 탭 + 간단 목록)
+   — 성경의 분류(모세오경·역사서…)에 익숙하지 않은 분들은 간단 목록이 더 편하다고 해서 고를 수 있게 함 */
+var LS_LISTMODE = "bible_listmode_v1", LS_LISTTAB = "bible_listtab_v1";
+function getListMode(){ return lsGet(LS_LISTMODE, "category") === "simple" ? "simple" : "category"; }
+function listModeSwitch(){
+  var mode = getListMode();
+  function b(key, label){
+    return el("button",{class: mode === key ? "on" : "", onclick:function(){ if(getListMode() !== key){ lsSet(LS_LISTMODE, key); window.scrollTo(0,0); render(); } }},[label]);
+  }
+  return el("div",{class:"list-mode"},[ b("category","📚 분류별 보기"), b("simple","📋 구약·신약 목록") ]);
+}
+function renderLettersSimple(){
+  var wrap = el("div",{});
+  wrap.appendChild(listModeSwitch());
+  var tab = lsGet(LS_LISTTAB, "OT") === "NT" ? "NT" : "OT";
+  var tabs = el("div",{class:"ot-nt-tabs"});
+  var list = el("div",{class:"simple-list"});
+  function tabBtn(key, label, count){
+    return el("button",{class: tab === key ? "on" : "", onclick:function(){ if(tab !== key){ lsSet(LS_LISTTAB, key); window.scrollTo(0,0); render(); } }},[label, el("small",{},[count + "권"])]);
+  }
+  tabs.appendChild(tabBtn("OT","구약",39));
+  tabs.appendChild(tabBtn("NT","신약",27));
+  wrap.appendChild(tabs);
+  BOOKS.filter(function(b){ return tab === "OT" ? b.n <= 39 : b.n >= 40; }).forEach(function(b){
+    var pg = el("span",{class:"pg"},[""]);
+    var row = el("div",{class:"simple-row", id:"book-row-"+b.n, onclick:function(){ goChapters(b.n); }},[
+      el("span",{class:"nm"},[b.ko, el("small",{},[b.en])]), pg
+    ]);
+    list.appendChild(row);
+    getChapterCount(state.version, b.n).then(function(total){
+      var read = bookReadCount(b.n, total);
+      clear(pg);
+      if(read > 0){ pg.appendChild(el("b",{},[String(read)])); pg.appendChild(document.createTextNode(" / " + total)); }
+      else pg.appendChild(document.createTextNode(total + "장"));
+    });
+  });
+  wrap.appendChild(list);
+  $main.appendChild(wrap);
+  /* 탭 줄은 헤더 바로 밑에 붙어 있게(헤더 높이가 바뀌어도 다시 맞춤) */
+  function syncTop(){ var h = document.querySelector("header"); tabs.style.top = (h ? h.offsetHeight : 0) + "px"; }
+  requestAnimationFrame(syncTop);
+  var hdr = document.querySelector("header");
+  if(window.ResizeObserver && hdr){ state._jumpBarRO = new ResizeObserver(syncTop); state._jumpBarRO.observe(hdr); }
+}
+
 function renderLetters(){
+  if(getListMode() === "simple") return renderLettersSimple();
   /* 구약(1~39권) / 신약(40~66권)으로 나누어 66권 전체를 빠짐없이 보여준다.
      맨 위는 이제 "오늘의 통독" 카드 대신 분류 칩이 차지한다 — 목회자가 설교 중
      이 책 저 책을 오가며 찾을 때도 스크롤 없이 바로 이동할 수 있도록 하기 위함. */
@@ -1627,6 +1690,7 @@ function renderLetters(){
   }
   jumpBar.appendChild(buildJumpRow("구약"));
   jumpBar.appendChild(buildJumpRow("신약"));
+  wrap.appendChild(listModeSwitch());
   wrap.appendChild(jumpBar);
   /* 헤더(상단 타이틀줄) 바로 밑에 자리를 잡도록, sticky 위치를 헤더 높이만큼 내려준다.
      (둘 다 top:0으로 두면 스크롤시 서로 겹쳐버린다) */
@@ -2550,7 +2614,9 @@ render = function(){
 var MANUAL_SECTIONS = [
   {title:"📚 성경 찾아 읽기", steps:true, items:[
     "맨 위 왼쪽의 큰 **📚 전체** 버튼을 누르면 성경 66권 목록이 나옵니다.",
-    "목록 위의 분류 칩(**모세오경 · 역사서 · 시가서 … 복음서 · 바울서신 · 계시록**)을 누르면 그 부분으로 바로 이동합니다. 목록을 아래로 내려도 칩은 늘 위에 떠 있어요.",
+    "첫 화면은 두 가지 방식 중 고를 수 있어요. 맨 위의 **📚 분류별 보기 / 📋 구약·신약 목록**을 누르면 바로 바뀝니다(⋯ → **📚 첫 화면**에서도 바꿀 수 있음).",
+    "**분류별 보기**: 목록 위의 분류 칩(**모세오경 · 역사서 · 시가서 … 복음서 · 바울서신 · 계시록**)을 누르면 그 부분으로 바로 이동합니다. 목록을 아래로 내려도 칩은 늘 위에 떠 있어요.",
+    "**구약·신약 목록**: 위의 **구약 / 신약** 탭을 누르고, 창세기부터 차례로 놓인 목록에서 책을 고르면 됩니다. 성경의 분류를 몰라도 쉽게 찾을 수 있어요.",
     "책 이름 → 장 번호 → 절 번호 순서로 누르면 본문이 열립니다.",
     "**1절**을 누르면 그 장을 처음부터 보여주고, 다른 절(예: 28절)을 누르면 그 구절로 바로 내려가서 바탕색으로 표시해 줍니다.",
     "절 화면의 **전체 읽기 ›**를 눌러도 그 장을 처음부터 읽을 수 있어요.",
@@ -2736,6 +2802,20 @@ function openSettingsModal(){
   sheet.appendChild(el("div",{class:"theme-row"},[
     el("div",{class:"label"},["🔤 한글 글꼴"]),
     el("div",{class:"controls"},[ koFontBtn("gothic","고딕"), koFontBtn("serif","명조") ])
+  ]));
+  /* 첫 화면(책 목록) 보기 방식 */
+  var lmBtns = {};
+  function lmBtn(key, label){
+    var b = el("button",{class:"btn" + (getListMode() === key ? " active" : ""), onclick:function(){
+      lsSet(LS_LISTMODE, key);
+      Object.keys(lmBtns).forEach(function(k){ lmBtns[k].classList.toggle("active", k === key); });
+      if(state.screen === "letters") render();
+    }},[label]);
+    lmBtns[key] = b; return b;
+  }
+  sheet.appendChild(el("div",{class:"theme-row"},[
+    el("div",{class:"label"},["📚 첫 화면"]),
+    el("div",{class:"controls"},[ lmBtn("category","분류별"), lmBtn("simple","구약·신약 목록") ])
   ]));
   /* 화면 색 고르기 */
   var themeBtns = {};

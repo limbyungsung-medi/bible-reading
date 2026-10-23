@@ -249,7 +249,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-20-1">
+<meta name="app-build" content="2026-10-23-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -512,7 +512,8 @@ function parseGoHash(){
   });
   vs = vs.filter(function(v,i){ return vs.indexOf(v) === i; }).sort(function(a,b){ return a-b; });
   var vm = /[#&]v=([^&]+)/.exec(h);
-  return {b:b, ch:ch, vs:vs, ver: vm ? decodeURIComponent(vm[1]) : "", from: /[#&]from=amsong/.test(h)};
+  var im = /[#&]id=([^&]+)/.exec(h);
+  return {b:b, ch:ch, vs:vs, ver: vm ? decodeURIComponent(vm[1]) : "", from: /[#&]from=amsong/.test(h), id: im ? decodeURIComponent(im[1]) : ""};
 }
 var pendingGo = parseGoHash();
 function findVersionKey(v){
@@ -532,7 +533,7 @@ function applyPendingGo(){
   try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
   var key = findVersionKey(g.ver);
   if(key){ state.version = key; try{ $versionSelect.value = key; }catch(e){} }
-  state.fromAmsong = g.from;
+  state.fromAmsong = g.from; state.amsongId = g.id || "";
   goReading(g.b, g.ch, g.vs.length ? g.vs[0] : null, g.vs);
   return true;
 }
@@ -542,10 +543,16 @@ window.addEventListener("hashchange", function(){
   if(state.screen !== "connect" && state.lfaFiles && Object.keys(state.lfaFiles).length) applyPendingGo();
 });
 function backToAmsong(){
-  state.fromAmsong = false;
-  /* 암송 앱에서 새 창으로 열렸으면 이 창을 닫아 암송 앱으로 돌아가고, 닫히지 않으면 암송 앱 주소로 간다 */
-  try{ window.close(); }catch(e){}
-  setTimeout(function(){ location.href = amsongUrl(); }, 250);
+  /* 창을 닫지 않는다(크롬에서는 탭이 닫혀 빈 화면만 남았음). 암송 앱에서 이 화면으로 넘어왔으면
+     "뒤로 가기"로 방금 보던 암송 구절 화면으로 돌아가고, 그럴 수 없으면 암송 앱의 그 구절을 새로 연다. */
+  var url = amsongUrl() + (state.amsongId ? "#open=" + encodeURIComponent(state.amsongId) : "");
+  var cameFromAmsong = /\/bible-memory\//.test(document.referrer || "") && history.length > 1;
+  if(cameFromAmsong){
+    history.back();
+    setTimeout(function(){ location.href = url; }, 700); /* 뒤로 가지 못했을 때만 실행됨 */
+  } else {
+    location.href = url;
+  }
 }
 function compactVerses(vs){
   var o = [], i = 0;
@@ -1371,6 +1378,9 @@ function updateCrumbs(){
   if(state.screen === "connect"){ $crumbs.style.display="none"; return; }
   $crumbs.style.display = "flex";
   var parts = [];
+  if(state.screen === "reading" && state.fromAmsong){
+    parts.push(el("button",{class:"amsong-back", title:"말씀암송 앱으로 돌아가기", onclick:backToAmsong},["‹ 암송으로"]));
+  }
   parts.push(el("span",{class:"clickable crumb-home", title:"성경 목록으로", onclick:function(){ goLetters(); }},["📚 전체"]));
   if(state.book){
     var b = bookByNum(state.book);
@@ -1778,7 +1788,6 @@ function renderReading(){
   var parOn = !!par.on && Object.keys(state.lfaFiles).length > 1;
   var parVersion = pickParallelVersion(par.version);
   var head = el("div",{class:"row reading-head", style:"justify-content:space-between; margin-bottom:4px; gap:8px; flex-wrap:wrap;"},[
-    state.fromAmsong ? el("button",{class:"amsong-back", title:"말씀암송 앱으로 돌아가기", onclick:backToAmsong},["‹ 암송으로"]) : null,
     el("div",{style:"font-weight:700; font-size:16px;"},[book.ko + " " + state.chapter + "장" + (state.targetVerse ? (" " + targetLabel() + "절") : "")]),
     el("button",{class:"par-toggle" + (parOn ? " on" : ""), title:"두 번역본을 나란히 대조해서 보기", onclick:function(){
       if(Object.keys(state.lfaFiles).length < 2){ showToast("대조하려면 번역본이 2개 이상 있어야 해요"); return; }
@@ -2394,7 +2403,7 @@ var MANUAL_SECTIONS = [
     "외우고 싶은 구절을 꾹 눌러 고른 뒤, 아래 줄의 **📖 암송에 추가**를 누르세요.",
     "**말씀암송 앱**이 열리면서 주소·본문·번역본이 채워진 **새 구절 만들기** 화면이 나옵니다. 카테고리만 고르고 **저장**하면 끝!",
     "저장한 구절은 다른 암송 구절과 똑같이 오늘의 복습·짝 점검에 나옵니다.",
-    "거꾸로 암송 앱의 구절 화면에서 **📖 앞뒤 문맥 보기**를 누르면 이 앱이 그 장으로 열리고, 암송 구절이 바탕색으로 표시됩니다. 위아래로 앞뒤 구절을 읽고, 좌우로 밀어 앞뒤 장도 볼 수 있어요. 다 보셨으면 제목 왼쪽의 **‹ 암송으로**를 누르세요."
+    "거꾸로 암송 앱의 구절 화면에서 **📖 앞뒤 문맥 보기**를 누르면 이 앱이 그 장으로 열리고, 암송 구절이 바탕색으로 표시됩니다. 위아래로 앞뒤 구절을 읽고, 좌우로 밀어 앞뒤 장도 볼 수 있어요. 다 보셨으면 맨 위 **‹ 암송으로**(또는 휴대폰의 뒤로 가기)를 누르면 보던 암송 구절로 돌아갑니다."
   ]},
   {title:"✍️ 묵상 메모 · 하이라이트 모아보기", items:[
     "오른쪽 위 **⋯** → **⭐ 하이라이트 모아보기**를 누르면 그동안 표시한 구절을 모두 볼 수 있어요.",

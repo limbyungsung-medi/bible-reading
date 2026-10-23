@@ -18,7 +18,7 @@
     --error-bg:#fbe9e4;
     --ctrl-border:#c9be9f; --ctrl-bg:#ffffff;
     --font-serif:"Source Serif 4",Georgia,"Noto Serif KR",serif;
-    --font-ui:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    --font-ui:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
     /* 한글 성경 본문 글꼴: 기본은 휴대폰에 들어 있는 고딕체(삼성폰은 삼성 기본 글꼴, 아이폰은 애플 고딕)
        — 여러 분이 고딕이 더 잘 보인다고 하셔서. 영어 본문은 그대로 세리프(Source Serif 4). */
     --font-ko:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
@@ -92,7 +92,7 @@
   .btn-primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;}
   .btn-ghost{background:transparent; border-color:transparent;}
   .icon-btn{min-width:38px; height:38px; padding:0 8px; display:flex; align-items:center; justify-content:center; border-radius:9px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); cursor:pointer; font-size:18px; font-weight:700; box-shadow:var(--shadow);}
-  select.version-select{border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); border-radius:10px; padding:7px 8px; font-size:13px; font-weight:600; max-width:150px; box-shadow:var(--shadow);}
+  select.version-select{border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); border-radius:10px; padding:8px 10px; font-family:var(--font-ui); font-size:16px; font-weight:700; max-width:150px; box-shadow:var(--shadow);}
   .crumbs{display:flex; align-items:center; gap:7px; margin-top:8px; font-size:15px; color:var(--text-dim); overflow-x:auto; white-space:nowrap;}
   .update-banner{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; padding:8px 12px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:10px; font-size:12.5px; color:var(--text);}
   .inapp-banner{display:none; flex-direction:column; align-items:flex-start; gap:8px; margin-top:8px; padding:10px 12px; background:var(--error-bg); border:1px solid var(--danger); border-radius:10px; font-size:12.5px; color:var(--text); line-height:1.6;}
@@ -107,24 +107,33 @@
   .center-pane{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; gap:14px; padding:20px;}
   .center-pane h1{font-size:20px; margin:0;}
   .center-pane p{color:var(--text-dim); font-size:13.5px; line-height:1.6; margin:0; max-width:380px;}
-  .section-title{font-size:12.5px; color:var(--text-dim); margin:18px 0 8px; font-weight:600; letter-spacing:.3px;}
+  .pick-title{margin:14px 2px 14px; font-size:16px; color:var(--text-dim); font-weight:600;}
+  .pick-title b{font-size:22px; color:var(--text); font-weight:800; margin-right:4px;}
+  .section-title{font-size:15px; color:var(--text-dim); margin:22px 2px 10px; font-weight:700; letter-spacing:0;}
   /* 책 목록 상단에 고정해두는 분류 칩 — 66권을 다 스크롤하지 않고 원하는 구간으로 바로 이동 */
   .book-jump-bar{position:sticky; top:0; z-index:4; background:var(--bg); padding:8px 0 6px; margin-bottom:4px; display:flex; flex-direction:column; gap:6px;}
   .book-jump-row{display:flex; align-items:center; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
   .book-jump-row::-webkit-scrollbar{display:none;}
-  .book-jump-tlabel{flex:none; font-size:11px; color:var(--text-dim); font-weight:700; min-width:24px;}
-  .book-jump-chip{flex:none; font-family:var(--font-serif); font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:100px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); cursor:pointer; white-space:nowrap;}
+  .book-jump-tlabel{flex:none; font-size:13px; color:var(--text-dim); font-weight:700; min-width:30px;}
+  .book-jump-chip{flex:none; font-family:var(--font-ui); font-size:15px; font-weight:600; padding:8px 15px; border-radius:100px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); cursor:pointer; white-space:nowrap;}
   .book-jump-chip:active{background:var(--accent-soft); border-color:var(--accent);}
   .book-jump-chip.active{background:var(--accent); border-color:var(--accent); color:#fff9ef;}
-  .book-list{display:flex; flex-direction:column; gap:8px;}
-  .book-row{display:flex; align-items:center; justify-content:space-between; padding:13px 14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; cursor:pointer; box-shadow:var(--shadow);}
-  .book-row .name{font-size:15px; font-weight:600;}
-  .book-row .sub{font-family:var(--font-serif); font-style:italic; font-size:11.5px; color:var(--text-dim); margin-top:2px;}
-  .book-row .progress{font-family:var(--font-serif); font-size:11.5px; color:var(--accent); font-weight:600;}
+  .book-list{display:flex; flex-direction:column; gap:10px;}
+  /* 책 목록: 큼직한 고딕(프리텐다드), 번호는 흐리게, 영어 이름은 작게, 오른쪽엔 읽은 장 수 + 얇은 진행 막대 */
+  .book-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 16px; background:var(--surface); border:1px solid var(--border); border-radius:14px; cursor:pointer;}
+  .book-row:active{border-color:var(--accent);}
+  .book-row .name{font-family:var(--font-ui); font-size:20px; font-weight:700; letter-spacing:-0.01em; line-height:1.25;}
+  .book-row .name .bn{display:inline-block; min-width:1.6em; font-size:15px; font-weight:600; color:var(--text-dim); font-variant-numeric:tabular-nums;}
+  .book-row .sub{font-family:var(--font-ui); font-size:13px; color:var(--text-dim); margin-top:3px; padding-left:calc(15px * 1.6); letter-spacing:0;}
+  .book-row .prog-wrap{flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:6px; min-width:74px;}
+  .book-row .progress{font-family:var(--font-ui); font-size:15px; color:var(--text-dim); font-weight:600; font-variant-numeric:tabular-nums;}
+  .book-row .progress b{color:var(--accent); font-weight:700;}
+  .book-row .prog-bar{width:74px; height:4px; border-radius:4px; background:var(--border); overflow:hidden;}
+  .book-row .prog-bar > i{display:block; height:100%; width:0; background:var(--accent); border-radius:4px;}
   .chapter-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
-  .chapter-btn{font-family:var(--font-serif); aspect-ratio:1; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .chapter-btn{font-family:var(--font-ui); aspect-ratio:1; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:19px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center;}
   .chapter-btn.read{background:var(--read); border-color:var(--read); color:var(--read-text);}
-  .verse-btn{font-family:var(--font-serif); aspect-ratio:1; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:13.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .verse-btn{font-family:var(--font-ui); aspect-ratio:1; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:17px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center;}
   .verse-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:7px;}
   .verse-row.highlight{background:var(--accent-soft); border-radius:8px; scroll-margin-top:70px;}
   /* 암송 앱에서 들어온 구절(여러 절): 이어진 절은 한 덩어리로 보이게 */
@@ -249,7 +258,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-24-1">
+<meta name="app-build" content="2026-10-25-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1643,17 +1652,20 @@ function renderLetters(){
     var list = el("div",{class:"book-list"});
     books.forEach(function(b){
       var row = el("div",{class:"book-row", id:"book-row-"+b.n, onclick:function(){ goChapters(b.n); }});
-      row.appendChild(el("div",{},[
-        el("div",{class:"name"},[b.n + ". " + b.ko]),
+      row.appendChild(el("div",{style:"min-width:0;"},[
+        el("div",{class:"name"},[el("span",{class:"bn"},[String(b.n)]), b.ko]),
         el("div",{class:"sub"},[b.en])
       ]));
       var pill = el("div",{class:"progress", id:"prog-"+b.n},["…"]);
-      row.appendChild(pill);
+      var barFill = el("i",{});
+      row.appendChild(el("div",{class:"prog-wrap"},[pill, el("div",{class:"prog-bar"},[barFill])]));
       list.appendChild(row);
       getChapterCount(state.version, b.n).then(function(total){
         var read = bookReadCount(b.n, total);
-        var p = document.getElementById("prog-"+b.n);
-        if(p) p.textContent = read + " / " + total + "장";
+        clear(pill);
+        pill.appendChild(el("b",{},[String(read)]));
+        pill.appendChild(document.createTextNode(" / " + total + "장"));
+        barFill.style.width = (total ? Math.round(read / total * 100) : 0) + "%";
       });
     });
     wrap.appendChild(list);
@@ -1704,7 +1716,7 @@ function renderLetters(){
 function renderChapters(){
   var book = bookByNum(state.book);
   var wrap = el("div",{});
-  wrap.appendChild(el("div",{class:"section-title"},[book.ko + " (" + book.en + ") — 장을 선택하세요"]));
+  wrap.appendChild(el("div",{class:"pick-title"},[el("b",{},[book.ko]), el("span",{},[" 장을 고르세요"])]));
   var grid = el("div",{class:"chapter-grid", id:"chapterGrid"});
   grid.appendChild(el("div",{class:"empty-hint"},["불러오는 중…"]));
   wrap.appendChild(grid);
@@ -1728,7 +1740,7 @@ function renderVerses(){
   var book = bookByNum(state.book);
   var wrap = el("div",{});
   var headRow = el("div",{class:"row", style:"justify-content:space-between; margin-bottom:4px;"},[
-    el("div",{class:"section-title", style:"margin:0;"},[book.ko + " " + state.chapter + "장 — 절을 선택하세요"]),
+    el("div",{class:"pick-title", style:"margin:0;"},[el("b",{},[book.ko + " " + state.chapter + "장"]), el("span",{},[" 절을 고르세요"])]),
     el("button",{class:"btn btn-ghost", style:"font-size:12px; padding:6px 10px;", onclick:function(){ goReading(state.book,state.chapter); }},["전체 읽기 ›"])
   ]);
   wrap.appendChild(headRow);

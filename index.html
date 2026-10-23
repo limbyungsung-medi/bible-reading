@@ -249,7 +249,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-23-2">
+<meta name="app-build" content="2026-10-24-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2109,23 +2109,13 @@ function getPlayerEl(){
       var fromBook = player.book, fromChapter = player.chapter;
       loadPlayerChapter(n.book, n.chapter, n.file);
       var pp = a.play(); if(pp && pp.catch) pp.catch(function(){});
-      if(state.screen === "reading" && state.book === fromBook && state.chapter === fromChapter){ state._swipeDir = 1; goReading(n.book, n.chapter); }
+      followPlayerOnScreen(fromBook, fromChapter, 1);
       return;
     }
     playerStep(1, true);
   });
-  /* 장이 끝나기 40초 전쯤 다음 장 오디오를 미리 꺼내 둔다 */
-  a.addEventListener("timeupdate", function(){
-    if(!player.book || player.prefetching || !a.duration || !isFinite(a.duration)) return;
-    if(a.duration - a.currentTime > 40) return;
-    if(player.next && player.next.fromBook === player.book && player.next.fromChapter === player.chapter) return;
-    player.prefetching = true;
-    var fb = player.book, fc = player.chapter;
-    relativeChapter(fb, fc, 1).then(function(t){
-      if(!t) return null;
-      return getAudioFile(t.book, t.chapter).then(function(f){ if(f) player.next = {fromBook:fb, fromChapter:fc, book:t.book, chapter:t.chapter, file:f}; });
-    }).catch(function(){}).then(function(){ player.prefetching = false; });
-  });
+  /* 혹시 처음 미리 받기가 실패했으면 재생 중에 다시 시도(화면이 켜져 있을 때의 보조 장치) */
+  a.addEventListener("timeupdate", function(){ prefetchNextChapter(); });
   a.addEventListener("play", function(){ if("mediaSession" in navigator) try{ navigator.mediaSession.playbackState = "playing"; }catch(e){} });
   a.addEventListener("pause", function(){ if("mediaSession" in navigator) try{ navigator.mediaSession.playbackState = "paused"; }catch(e){} });
   /* 화면에 오디오 줄이 없을 때도 문서 안에 붙어 있어야 소리가 끊기지 않는다 */
@@ -2148,7 +2138,25 @@ function loadPlayerChapter(book, chapter, file){
   a.src = player.url;
   a.playbackRate = state.audioRate || 1;
   updateMediaMetadata();
+  /* 다음 장은 이 장이 시작되자마자 바로 미리 꺼내 둔다. 화면이 꺼지면 크롬이 재생 진행 알림
+     (timeupdate)을 거의 보내지 않아서, "끝나기 직전에 준비"하는 방식으로는 두 번째 장부터
+     준비가 안 되어 소리가 멈췄다. */
+  prefetchNextChapter();
 }
+function prefetchNextChapter(){
+  if(!player.book || player.prefetching) return;
+  if(player.next && player.next.fromBook === player.book && player.next.fromChapter === player.chapter) return;
+  player.prefetching = true;
+  var fb = player.book, fc = player.chapter;
+  relativeChapter(fb, fc, 1).then(function(t){
+    if(!t) return null;
+    return getAudioFile(t.book, t.chapter).then(function(f){
+      if(f && player.book === fb && player.chapter === fc) player.next = {fromBook:fb, fromChapter:fc, book:t.book, chapter:t.chapter, file:f};
+    });
+  }).catch(function(){}).then(function(){ player.prefetching = false; });
+}
+/* 테스트·점검용: 지금 재생 중인 장과 미리 준비된 다음 장 */
+window.__playerInfo = function(){ return {book:player.book, chapter:player.chapter, next: player.next ? player.next.book + ":" + player.next.chapter : null, from: player.next ? player.next.fromBook + ":" + player.next.fromChapter : null}; };
 function updateMediaMetadata(){
   if(!("mediaSession" in navigator) || !player.book) return;
   try{
@@ -2172,6 +2180,21 @@ function setupMediaSession(){
   on("seekforward", function(d){ if(player.el) player.el.currentTime = Math.min(player.el.duration || 1e9, player.el.currentTime + ((d && d.seekOffset) || 10)); });
   on("seekto", function(d){ if(player.el && d && typeof d.seekTime === "number") player.el.currentTime = d.seekTime; });
 }
+/* 오디오가 다음 장으로 넘어갔을 때, 그 장을 보고 있었으면 화면도 넘긴다.
+   단 화면이 꺼져 있으면 지금은 아무것도 그리지 않고(휴대폰이 바쁜 앱을 멈추지 않도록),
+   화면이 다시 켜질 때 지금 들리는 장으로 한 번에 맞춘다. */
+var _catchUpOnVisible = false;
+function followPlayerOnScreen(fromBook, fromChapter, delta){
+  var watching = state.screen === "reading" && state.book === fromBook && state.chapter === fromChapter;
+  if(!watching) return;
+  if(document.hidden){ _catchUpOnVisible = true; return; }
+  state._swipeDir = delta; goReading(player.book, player.chapter);
+}
+document.addEventListener("visibilitychange", function(){
+  if(document.hidden || !_catchUpOnVisible) return;
+  _catchUpOnVisible = false;
+  if(state.screen === "reading" && player.book && (state.book !== player.book || state.chapter !== player.chapter)) goReading(player.book, player.chapter);
+});
 /* 앞/뒤 장 번호 계산(책의 처음·끝을 넘어가면 이전·다음 책으로) */
 async function relativeChapter(book, chapter, delta){
   var verKey = state.version;
@@ -2203,8 +2226,7 @@ async function playerStep(delta, autoplay){
       loadPlayerChapter(target.book, target.chapter, file);
       if(autoplay){ try{ await player.el.play(); }catch(e){} }
     }
-    var watching = state.screen === "reading" && state.book === fromBook && state.chapter === fromChapter;
-    if(watching){ state._swipeDir = delta; goReading(target.book, target.chapter); }
+    followPlayerOnScreen(fromBook, fromChapter, delta);
   } finally { _playerStepping = false; }
 }
 
@@ -2369,6 +2391,7 @@ function setupAudioFollow(audio, audioFile, forBook, forChapter){
   });
   function ensureTimings(){
     if(analyzed || analyzing) return;
+    if(document.hidden) return; /* 화면이 꺼져 있을 땐 무거운 오디오 분석을 미룬다(켜지면 다시 시도) */
     if(_verseTimingCache[cacheKey]){ verseNums = _verseTimingCache[cacheKey].nums; starts = _verseTimingCache[cacheKey].starts; analyzed = true; return; }
     analyzing = true;
     audioWeightVerses(forBook, forChapter).then(function(verses){
@@ -2397,6 +2420,8 @@ function setupAudioFollow(audio, audioFile, forBook, forChapter){
   }
   function tick(force){
     if(state.book !== forBook || state.chapter !== forChapter) return;
+    if(player.book !== forBook || player.chapter !== forChapter) return; /* 오디오가 이미 다른 장으로 넘어감 */
+    if(document.hidden) return;
     if(!isFollowOn() || !starts || !verseNums.length) return;
     if(audio.paused) return; /* 재생 중일 때만 따라간다(멈춰 있을 땐 화면을 건드리지 않음) */
     var t = audio.currentTime + 0.12, idx = 0;
@@ -2417,6 +2442,8 @@ function setupAudioFollow(audio, audioFile, forBook, forChapter){
   function onPlay(){ ensureTimings(); tick(true); }
   function onTime(){ tick(false); }
   function onSeeked(){ holdUntil = 0; tick(true); }
+  function onVisible(){ if(!document.hidden && !audio.paused){ ensureTimings(); tick(true); } }
+  document.addEventListener("visibilitychange", onVisible);
   audio.addEventListener("play", onPlay);
   audio.addEventListener("timeupdate", onTime);
   audio.addEventListener("seeked", onSeeked);
@@ -2437,6 +2464,7 @@ function setupAudioFollow(audio, audioFile, forBook, forChapter){
     audio.removeEventListener("timeupdate", onTime);
     audio.removeEventListener("seeked", onSeeked);
     audio.removeEventListener("ended", clearNow);
+    document.removeEventListener("visibilitychange", onVisible);
   };
   return btn;
 }

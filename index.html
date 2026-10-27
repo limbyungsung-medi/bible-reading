@@ -234,7 +234,10 @@
   .highlight-item .actions button{font-size:11.5px; padding:5px 10px;}
   /* 구절 선택(임시, 회색) — 저장되는 하이라이트(노란색)와는 별개 */
   .verse-row.sel{background:rgba(150,150,150,.30) !important; box-shadow:inset 3px 0 0 #a0a0a0;}
+  /* 선택된 채로 하이라이트도 된 절: 노란 바탕 + 회색 선택 테두리(선택 중임을 알 수 있게) */
+  .verse-row.sel.user-mark{background:var(--mark-bg) !important; box-shadow:inset 3px 0 0 #a0a0a0, inset 0 0 0 1.5px rgba(170,170,170,.75);}
   body.has-selbar main{padding-bottom:var(--selbar-space, 260px) !important;}
+  body.has-selbar .toast{bottom:calc(var(--selbar-space, 260px) - 10px);} /* 알림이 작업 창 단추를 가리지 않게 */
   /* 구절을 고르면 화면 아래에 뜨는 작업 창 */
   .selection-bar{position:fixed; left:0; right:0; z-index:7; padding:12px 12px 12px; background:var(--surface); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -6px 20px rgba(0,0,0,.45); color:var(--text); max-width:720px; margin:0 auto; font-family:var(--font-ui);}
   .selection-bar .sb-title{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:15px; font-weight:700; margin:0 2px 10px;}
@@ -296,7 +299,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-29-1">
+<meta name="app-build" content="2026-10-30-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2032,14 +2035,15 @@ function renderReading(){
           setRowHighlight(h.verse, !allHl);
         });
         showToast(allHl ? "하이라이트를 지웠어요" : "하이라이트 했어요");
-        clearSelection();
+        /* 선택은 그대로 둔다 — 하이라이트한 뒤 이어서 복사하거나, 복사한 뒤 하이라이트할 수 있도록.
+           선택은 "✕ 선택 해제"를 누르거나 다른 장으로 넘어갈 때 풀린다. */
+        refreshSelBar();
       }, allHl ? "hl-on" : ""),
       act("📋", "복사", function(){
         var text = formatSelectionForCopy(items);
         copyText(text).then(function(){ showToast(items.length + "절을 복사했어요"); });
-        clearSelection();
       }),
-      act("📖", "암송구절", function(){ sendToAmsong(items); clearSelection(); }),
+      act("📖", "암송구절", function(){ sendToAmsong(items); }),
       act("✕", "선택 해제", clearSelection)
     ]));
     var vers = otherVersions();
@@ -2753,7 +2757,8 @@ var MANUAL_SECTIONS = [
     "고른 뒤 화면을 위아래로 **스크롤해도 다른 절이 잘못 골라지지 않아요**(손가락을 움직이거나 화면이 움직인 터치는 선택으로 치지 않음). 이미 고른 절은 화면 밖으로 지나가도 그대로 선택돼 있습니다.",
     "구절을 고르면 화면 아래에 작업 창이 뜹니다: **🖍 하이라이트 · 📋 복사 · 📖 암송구절 · ✕ 선택 해제**.",
     "**🖍 하이라이트**를 누르면 고른 구절이 노란색으로 칠해져 저장됩니다. 하이라이트된 구절을 다시 골라 **하이라이트 지우기**를 누르면 지워집니다.",
-    "**📋 복사**는 **지금 고른 구절만** 복사합니다. 예: 로마서 5:6,8 → 본문 … 본문 (로마서 5:6,8 개역개정). 복사하면 선택은 자동으로 풀립니다.",
+    "**📋 복사**는 **지금 고른 구절만** 복사합니다. 예: 로마서 5:6,8 → 본문 … 본문 (로마서 5:6,8 개역개정판).",
+    "하이라이트나 복사를 해도 **선택은 그대로 남아** 있어서, 하이라이트하고 이어서 복사하거나 그 반대로 할 수 있어요. 선택은 **✕ 선택 해제**를 누르거나 **다른 장으로 넘어가면** 풀립니다.",
     "작업 창 아래의 **다른 역본**(개역한글 · 새번역 · 현대어성경 · NIV)을 누르면 고른 구절을 그 역본으로 바로 볼 수 있고, 그 역본으로 복사도 됩니다.",
     "하이라이트한 구절은 **⋯ → ⭐ 하이라이트 모아보기**에서 모아 보고 메모를 적을 수 있어요."
   ]},

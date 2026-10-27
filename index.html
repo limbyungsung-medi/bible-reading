@@ -234,6 +234,7 @@
   .highlight-item .actions button{font-size:11.5px; padding:5px 10px;}
   /* 구절 선택(임시, 회색) — 저장되는 하이라이트(노란색)와는 별개 */
   .verse-row.sel{background:rgba(150,150,150,.30) !important; box-shadow:inset 3px 0 0 #a0a0a0;}
+  body.has-selbar main{padding-bottom:var(--selbar-space, 260px) !important;}
   /* 구절을 고르면 화면 아래에 뜨는 작업 창 */
   .selection-bar{position:fixed; left:0; right:0; z-index:7; padding:12px 12px 12px; background:var(--surface); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -6px 20px rgba(0,0,0,.45); color:var(--text); max-width:720px; margin:0 auto; font-family:var(--font-ui);}
   .selection-bar .sb-title{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:15px; font-weight:700; margin:0 2px 10px;}
@@ -295,7 +296,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-28-1">
+<meta name="app-build" content="2026-10-29-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1861,6 +1862,10 @@ function renderVerses(){
   });
 }
 
+/* 마지막으로 화면이 스크롤된 시각 — 본문 탭과 스크롤을 구분하는 데 쓴다 */
+var _lastScrollAt = 0;
+window.addEventListener("scroll", function(){ _lastScrollAt = Date.now(); }, {passive:true});
+
 function renderReading(){
   var book = bookByNum(state.book);
   var wrap = el("div",{});
@@ -2007,9 +2012,12 @@ function renderReading(){
   function refreshSelBar(){
     var items = selectedItems();
     clear(selBar);
-    if(!items.length){ selBar.style.display = "none"; return; }
+    if(!items.length){ selBar.style.display = "none"; document.body.style.removeProperty("--selbar-space"); document.body.classList.remove("has-selbar"); return; }
     selBar.style.display = "block";
     positionSelBar();
+    /* 작업 창이 떠 있는 동안 본문 맨 끝(마지막 절)도 창 위로 올라올 수 있게 아래 여백을 늘린다 */
+    document.body.classList.add("has-selbar");
+    requestAnimationFrame(function(){ document.body.style.setProperty("--selbar-space", (selBar.offsetHeight + (parseFloat(selBar.style.bottom) || 0) + 24) + "px"); });
     var allHl = items.every(function(h){ return isHighlighted(h.book, h.chapter, h.verse); });
     selBar.appendChild(el("div",{class:"sb-title"},[
       el("span",{},[compactRef(items) + " ", el("small",{},["· " + items.length + "절 선택"])]),
@@ -2122,55 +2130,67 @@ function renderReading(){
         row.appendChild(el("div",{class:"verse-num"},[String(v.v)]));
         row.appendChild(verseTextEl(v.text));
       }
-      /* 본문 터치 동작: 짧게 터치하면 위/아래 바를 숨기거나 다시 보이게 하고(넓게 보기 전환),
-         길게 눌러야(꾹 누르기) 하이라이트가 켜지거나 꺼진다. 스크롤하려고 손가락을 움직인
-         경우는 둘 다 무시한다. 복사/이미지 아이콘을 누른 경우도 제외한다. */
+      /* ---- 본문 터치 동작(탭 / 꾹 누르기 / 스크롤 구분) ----
+         · 손가락이 닿는 순간에는 아무것도 확정하지 않는다. "탭 후보"로만 기억한다.
+         · 손가락이 터치 슬롭(10px) 넘게 움직이거나, 화면이 조금이라도 스크롤되거나, 브라우저가
+           스크롤로 가져가면(pointercancel) → 이번 탭 후보만 취소(이미 고른 절은 그대로 유지).
+         · 스크롤이 관성으로 흐르는 중에 화면을 짚어 멈춘 터치도 탭으로 치지 않는다.
+         · 고르는 중이 아닐 때: 제자리에서 0.3초 꾹 누르면 그 절 선택, 짧은 탭은 넓게 보기 전환.
+         · 이미 한 절 이상 골라져 있을 때: 제자리에서 탭을 "다 마쳤을 때(손을 뗄 때)"만 그 절을 선택/해제.
+           → 1절을 고른 뒤 33절까지 스크롤해 내려가도 중간 절이나 손을 뗀 자리의 절이 골라지지 않는다. */
       (function(){
-        /* 누르고 있는 시간: 이 장에서 처음 고를 때는 0.3초, 이미 한 구절이라도 골라져 있으면
-           (이어서 여러 구절을 고르는 중이므로) 0.1초만 눌러도 바로 선택/해제되어 쭉쭉 고를 수 있다. */
-        var FIRST_PRESS_MS = 300, NEXT_PRESS_MS = 100, MOVE_TOLERANCE = 10;
-        var pressTimer = null, startX = 0, startY = 0, longPressFired = false, pointerActive = false, cancelled = false;
-        var selectingAtPress = false;
+        var LONG_PRESS_MS = 300, TOUCH_SLOP = 10, SCROLL_EPS = 2, FLING_GUARD_MS = 150;
+        var g = null;   /* 지금 진행 중인 터치 하나의 상태 */
+        var pressTimer = null;
         function isSelecting(){ return !!verseWrap.querySelector(".verse-row.sel"); }
         function clearPressTimer(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; } }
-        function isOnIconBtn(e){ return e.target && e.target.closest && e.target.closest(".verse-copy-btn"); }
-        function doHighlightToggle(){
-          /* 꾹 누르면 "임시 선택"을 켜고 끈다(저장되는 하이라이트는 작업 창에서) */
+        function toggleSel(){
           if(selected[v.v] !== undefined){ delete selected[v.v]; row.classList.remove("sel"); }
           else { selected[v.v] = v.text; row.classList.add("sel"); }
           refreshSelBar();
         }
+        /* 이 터치가 아직 "제자리 탭"으로 유효한지 */
+        function stillValid(){
+          if(!g || !g.valid) return false;
+          if(Math.abs((window.pageYOffset || 0) - g.scrollY0) > SCROLL_EPS) return false;  /* 화면이 움직였음 */
+          if(_lastScrollAt > g.t0) return false;                                           /* 누르는 동안 스크롤 발생 */
+          return true;
+        }
+        function cancelCandidate(){ if(g) g.valid = false; clearPressTimer(); }
         row.addEventListener("pointerdown", function(e){
-          if(isOnIconBtn(e)) return;
           if(e.button !== undefined && e.button > 0) return;
-          pointerActive = true; longPressFired = false; cancelled = false;
-          startX = e.clientX; startY = e.clientY;
-          selectingAtPress = isSelecting();
           clearPressTimer();
-          pressTimer = setTimeout(function(){
-            pressTimer = null;
-            if(!pointerActive || cancelled) return;
-            longPressFired = true;
-            doHighlightToggle();
-          }, selectingAtPress ? NEXT_PRESS_MS : FIRST_PRESS_MS);
-        });
-        row.addEventListener("pointermove", function(e){
-          if(!pointerActive || cancelled) return;
-          if(Math.abs(e.clientX - startX) > MOVE_TOLERANCE || Math.abs(e.clientY - startY) > MOVE_TOLERANCE){
-            cancelled = true; clearPressTimer();
+          g = { x0:e.clientX, y0:e.clientY, t0:Date.now(), scrollY0:(window.pageYOffset || 0),
+                selectingAtPress:isSelecting(), longFired:false,
+                /* 관성 스크롤이 흐르는 중에 짚은 터치는 스크롤을 멈추려는 동작이지 탭이 아니다 */
+                valid: (Date.now() - _lastScrollAt) > FLING_GUARD_MS };
+          if(g.valid && !g.selectingAtPress){
+            pressTimer = setTimeout(function(){
+              pressTimer = null;
+              if(!stillValid()) return;
+              g.longFired = true;
+              toggleSel();
+            }, LONG_PRESS_MS);
           }
         });
-        function endPress(e){
-          if(!pointerActive) return;
-          pointerActive = false;
+        row.addEventListener("pointermove", function(e){
+          if(!g || !g.valid) return;
+          if(Math.abs(e.clientX - g.x0) > TOUCH_SLOP || Math.abs(e.clientY - g.y0) > TOUCH_SLOP) cancelCandidate();
+        });
+        row.addEventListener("pointerup", function(e){
+          if(!g) return;
           clearPressTimer();
-          /* 여러 구절을 고르는 중에는, 0.1초도 안 되게 스치듯 누른 경우 화면(위·아래 바)이 갑자기
-             숨겨지지 않도록 아무 동작도 하지 않는다. 고르는 중이 아닐 때만 짧게 터치 = 넓게 보기. */
-          if(!cancelled && !longPressFired && !isOnIconBtn(e) && !selectingAtPress) toggleImmersive();
-          longPressFired = false; cancelled = false;
-        }
-        row.addEventListener("pointerup", endPress);
-        row.addEventListener("pointercancel", function(){ pointerActive = false; cancelled = true; clearPressTimer(); });
+          var cur = g; g = null;
+          if(cur.longFired) return;                       /* 꾹 누르기로 이미 처리됨 */
+          if(!cur.valid) return;
+          if(Math.abs(e.clientX - cur.x0) > TOUCH_SLOP || Math.abs(e.clientY - cur.y0) > TOUCH_SLOP) return;
+          if(Math.abs((window.pageYOffset || 0) - cur.scrollY0) > SCROLL_EPS || _lastScrollAt > cur.t0) return;
+          if(cur.selectingAtPress) toggleSel();            /* 고르는 중: 완료된 탭으로만 선택/해제 */
+          else toggleImmersive();                          /* 평소: 짧은 탭 = 넓게 보기 */
+        });
+        /* 브라우저가 이 터치를 스크롤로 가져갔음 → 이번 탭 후보만 취소 */
+        row.addEventListener("pointercancel", function(){ cancelCandidate(); g = null; });
+        row.addEventListener("pointerleave", function(e){ if(e.pointerType !== "mouse") return; cancelCandidate(); });
         row.addEventListener("contextmenu", function(e){ e.preventDefault(); });
       })();
       if(isTarget){ row.classList.add("target-row"); if(v.v === state.targetVerse) row.id = "targetVerseRow"; }
@@ -2693,6 +2713,7 @@ render = function(){
     state._swipeHandlers = null;
   }
   if(state._selBarEl){ state._selBarEl.remove(); state._selBarEl=null; }
+  document.body.classList.remove("has-selbar");
   if(state._immersiveBtnEl){ state._immersiveBtnEl.remove(); state._immersiveBtnEl=null; }
   if(state._jumpBarRO){ state._jumpBarRO.disconnect(); state._jumpBarRO=null; }
   if(state._bookListScrollHandler){ window.removeEventListener("scroll", state._bookListScrollHandler); state._bookListScrollHandler=null; }
@@ -2728,7 +2749,8 @@ var MANUAL_SECTIONS = [
     "켜둔 상태는 기억해 두었다가 다음에 읽을 때도 그대로 적용됩니다."
   ]},
   {title:"⭐ 구절 고르기 · 하이라이트 · 복사", items:[
-    "구절을 **0.3초 정도 꾹 누르면** 회색으로 **선택**됩니다. 이어서 다른 구절은 **살짝(0.1초)만 눌러도** 골라져서 여러 구절을 쭉쭉 고를 수 있어요(다시 누르면 빠짐).",
+    "구절을 **0.3초 정도 꾹 누르면** 회색으로 **선택**됩니다. 이어서 다른 구절은 **가볍게 톡 누르면(탭)** 골라지고, 다시 누르면 빠집니다.",
+    "고른 뒤 화면을 위아래로 **스크롤해도 다른 절이 잘못 골라지지 않아요**(손가락을 움직이거나 화면이 움직인 터치는 선택으로 치지 않음). 이미 고른 절은 화면 밖으로 지나가도 그대로 선택돼 있습니다.",
     "구절을 고르면 화면 아래에 작업 창이 뜹니다: **🖍 하이라이트 · 📋 복사 · 📖 암송구절 · ✕ 선택 해제**.",
     "**🖍 하이라이트**를 누르면 고른 구절이 노란색으로 칠해져 저장됩니다. 하이라이트된 구절을 다시 골라 **하이라이트 지우기**를 누르면 지워집니다.",
     "**📋 복사**는 **지금 고른 구절만** 복사합니다. 예: 로마서 5:6,8 → 본문 … 본문 (로마서 5:6,8 개역개정). 복사하면 선택은 자동으로 풀립니다.",

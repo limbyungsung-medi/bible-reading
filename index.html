@@ -212,7 +212,7 @@
   .search-range-select-row .tilde{color:var(--text-dim); font-size:12px;}
   /* 성경읽기 화면 "넓게 보기": 위(헤더)·아래(이전/다음장, 오디오, 선택바)를 다 숨기고
      본문만 크게 본다. 되돌리는 버튼은 항상 화면 위에 떠 있어야 하므로 숨김 대상에서 뺀다. */
-  body.immersive header, body.immersive .chapter-nav, body.immersive .audio-bar, body.immersive .selection-bar{display:none !important;}
+  body.immersive header, body.immersive .chapter-nav, body.immersive .audio-bar{display:none !important;} /* 구절 작업 창은 넓게 보기에서도 보여야 함 */
   body.immersive main{padding:14px 14px 24px;}
   /* 성경 본문 화면은 좌우 여백을 최소로 해서 본문을 넓게 쓴다 */
   body.immersive .reading-head{padding-right:46px;} /* 떠 있는 ⤡ 버튼이 "읽음으로 표시"를 가리지 않게 */
@@ -232,8 +232,28 @@
   .swipe-hint{text-align:center; font-size:12px; color:var(--text-dim); margin-bottom:8px;}
   .highlight-item .actions{display:flex; gap:6px;}
   .highlight-item .actions button{font-size:11.5px; padding:5px 10px;}
-  .selection-bar{position:fixed; left:0; right:0; z-index:7; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; background:var(--mark-bg); border-top:1px solid var(--mark-border); box-shadow:var(--shadow); font-size:12.5px; color:var(--text); max-width:720px; margin:0 auto;}
-  .selection-bar .btn{font-size:11.5px; padding:6px 10px;}
+  /* 구절 선택(임시, 회색) — 저장되는 하이라이트(노란색)와는 별개 */
+  .verse-row.sel{background:rgba(150,150,150,.30) !important; box-shadow:inset 3px 0 0 #a0a0a0;}
+  /* 구절을 고르면 화면 아래에 뜨는 작업 창 */
+  .selection-bar{position:fixed; left:0; right:0; z-index:7; padding:12px 12px 12px; background:var(--surface); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -6px 20px rgba(0,0,0,.45); color:var(--text); max-width:720px; margin:0 auto; font-family:var(--font-ui);}
+  .selection-bar .sb-title{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:15px; font-weight:700; margin:0 2px 10px;}
+  .selection-bar .sb-title small{font-size:13px; color:var(--text-dim); font-weight:600;}
+  .selection-bar .sb-close{border:0; background:transparent; color:var(--text-dim); font-size:22px; line-height:1; padding:2px 6px; cursor:pointer;}
+  .selection-bar .sb-main{display:grid; grid-template-columns:repeat(4,1fr); gap:6px;}
+  .selection-bar .sb-main button{display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 2px; border-radius:12px; border:1px solid var(--border); background:var(--ctrl-bg); color:var(--text); font-family:var(--font-ui); font-size:13px; font-weight:700; cursor:pointer;}
+  .selection-bar .sb-main button .ic{font-size:20px; line-height:1;}
+  .selection-bar .sb-main button.hl-on{border-color:var(--mark-border); background:var(--mark-bg);}
+  .selection-bar .sb-vers{display:flex; align-items:center; gap:6px; margin-top:9px; overflow-x:auto; scrollbar-width:none;}
+  .selection-bar .sb-vers::-webkit-scrollbar{display:none;}
+  .selection-bar .sb-vers span{flex:none; font-size:12.5px; color:var(--text-dim); font-weight:700; margin-right:2px;}
+  .selection-bar .sb-vers button{flex:none; padding:7px 12px; border-radius:100px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); font-family:var(--font-ui); font-size:13.5px; font-weight:700; cursor:pointer;}
+  /* 다른 역본 보기 창 */
+  .xver-tabs{display:flex; gap:6px; overflow-x:auto; margin:4px 0 12px; scrollbar-width:none;}
+  .xver-tabs button{flex:none; padding:7px 12px; border-radius:100px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); font-family:var(--font-ui); font-size:14px; font-weight:700; cursor:pointer;}
+  .xver-tabs button.on{background:var(--accent); border-color:var(--accent); color:#111;}
+  .xver-body{font-size:var(--verse-font-size,16px); line-height:var(--verse-lh,1.8); margin-bottom:14px;}
+  .xver-body .v{margin-bottom:6px;}
+  .xver-body .v b{font-size:.8em; color:var(--verse-num-color); margin-right:4px; font-weight:600;}
   .fontsize-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; margin-bottom:12px;}
   .fontsize-row .label{font-size:13px; font-weight:600;}
   .fontsize-row .controls{display:flex; align-items:center; gap:6px;}
@@ -275,7 +295,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-26-1">
+<meta name="app-build" content="2026-10-27-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -473,7 +493,7 @@ function formatHighlightForCopy(h){
    이어붙이고(연속이 아니라 몇 절을 건너뛴 곳은 "…"로 표시), 맨 끝에 괄호로 책·장:절 목록과
    버전만 한 번 적는다. 예) "...죽으셨도다 …우리가 아직 죄인...확증하셨느니라 (로마서 5:6,8,10 개역개정)"
    items는 chapterHighlights()의 결과라 항상 같은 책·장 안에서 절 순서대로 정렬돼 있다. */
-function formatSelectionForCopy(items){
+function formatSelectionForCopy(items, versionLabelOverride){
   if(!items.length) return "";
   var body = "";
   for(var i=0;i<items.length;i++){
@@ -483,7 +503,7 @@ function formatSelectionForCopy(items){
   var book = bookByNum(items[0].book);
   var verseList = items.map(function(h){ return h.verse; }).join(",");
   var versionInfo = state.lfaFiles && state.lfaFiles[state.version];
-  var versionLabel = versionInfo ? labelForFile(versionInfo.displayName) : state.version;
+  var versionLabel = versionLabelOverride || (versionInfo ? labelForFile(versionInfo.displayName) : state.version);
   return body + " (" + (book ? book.ko : items[0].book) + " " + items[0].chapter + ":" + verseList + " " + versionLabel + ")";
 }
 /* ---------- 말씀암송 앱으로 보내기 ----------
@@ -1892,43 +1912,120 @@ function renderReading(){
     ])
   ]);
   wrap.appendChild(head);
-  /* 이 장에서 선택(하이라이트)한 구절이 하나라도 있으면 "n개 선택됨 + 한꺼번에 복사" 바를
-     보여준다. 연속이든 몇 절 걸러서 선택했든 상관없이 지금까지 표시해둔 구절을 절 순서대로
-     모아서 한 번에 복사할 수 있다. 본문 스크롤을 따라가지 않고, 화면 아래(오디오 표시줄·
-     이전/다음장 버튼) 바로 위에 항상 떠 있어야 여러 구절을 고르는 동안 위로 다시 스크롤하지
-     않고도 언제든 선택 복사를 누를 수 있다 — 그래서 wrap이 아니라 document.body에 붙인다. */
+  /* ---- 구절 선택 → 작업 창 ----
+     구절을 꾹 누르면 "임시 선택"(회색)이 되고, 화면 아래에 작업 창이 뜬다:
+     🖍 하이라이트(노란색, 저장됨) · 📋 복사 · 📖 암송구절 · ✕ 선택 해제, 그리고 다른 역본 보기.
+     복사·암송·다른 역본은 "지금 고른 구절"만 대상으로 하고, 끝나면 선택이 풀린다.
+     (예전에는 고른 구절 = 하이라이트라서, 1-4절을 복사한 뒤 9-12절을 고르면 1-4절까지 같이 복사됐음) */
   var selBar = el("div",{class:"selection-bar", style:"display:none;"});
   document.body.appendChild(selBar);
   state._selBarEl = selBar;
   function positionSelBar(){
-    /* 화면 아래 고정 이전/다음장 바는 없앴으므로(좌우 밀기로 대체), 오디오바가 있으면 그 바로 위, 없으면 맨 아래 */
     var audioBar = state._audioBarEl;
-    selBar.style.bottom = ((audioBar && audioBar.isConnected) ? audioBar.offsetHeight : 0) + "px";
+    selBar.style.bottom = ((audioBar && audioBar.isConnected && !document.body.classList.contains("immersive")) ? audioBar.offsetHeight : 0) + "px";
   }
   var forBookSel = state.book, forChapterSel = state.chapter;
+  var selected = {};   /* 절 번호 → 본문 (임시 선택) */
+  function selectedItems(){
+    return Object.keys(selected).map(Number).sort(function(a,b){ return a-b; }).map(function(v){
+      return {book:forBookSel, chapter:forChapterSel, verse:v, text:selected[v]};
+    });
+  }
+  function compactRef(items){
+    var b = bookByNum(forBookSel);
+    return (b ? b.ko : "") + " " + forChapterSel + ":" + compactVerses(items.map(function(h){ return h.verse; }));
+  }
+  function clearSelection(){
+    selected = {};
+    verseWrap.querySelectorAll(".verse-row.sel").forEach(function(r){ r.classList.remove("sel"); });
+    refreshSelBar();
+  }
+  function setRowHighlight(v, on){
+    var row = verseWrap.querySelector('.verse-row[data-v="' + v + '"]');
+    if(row) row.classList.toggle("user-mark", on);
+  }
+  /* 다른 역본 보기: 개역한글 · 새번역 · 현대어성경 · NIV (기기에 있는 것만, 지금 보는 역본은 빼고) */
+  var XVER = [["korhrv","개역한글"],["kornrsv","새번역"],["kortkv","현대어성경"],["engniv","NIV"]];
+  function otherVersions(){
+    var keys = Object.keys(state.lfaFiles || {}), out = [];
+    XVER.forEach(function(x){
+      for(var i=0;i<keys.length;i++){
+        if(keys[i].toLowerCase() === x[0] && keys[i] !== state.version){ out.push({key:keys[i], label:x[1]}); break; }
+      }
+    });
+    return out;
+  }
+  function openOtherVersion(items, startKey){
+    var vers = otherVersions(); if(!vers.length) return;
+    var backdrop = el("div",{class:"modal-backdrop", onclick:function(e){ if(e.target===backdrop) backdrop.remove(); }});
+    var sheet = el("div",{class:"modal-sheet"});
+    var titleEl = el("h3",{style:"margin:0 0 6px;"},[compactRef(items)]);
+    var tabs = el("div",{class:"xver-tabs"});
+    var body = el("div",{class:"xver-body"},["불러오는 중…"]);
+    var copyBtn = el("button",{class:"btn btn-primary", style:"flex:1;"},["📋 이 역본으로 복사"]);
+    var current = null, currentItems = [];
+    function show(v){
+      current = v;
+      Array.prototype.forEach.call(tabs.children, function(b){ b.classList.toggle("on", b.dataset.k === v.key); });
+      clear(body); body.appendChild(document.createTextNode("불러오는 중…"));
+      getChapterVerses(v.key, forBookSel, forChapterSel).then(function(vs){
+        if(current !== v) return;
+        var byNum = {}; (vs || []).forEach(function(x){ byNum[x.v] = x.text; });
+        clear(body);
+        currentItems = [];
+        items.forEach(function(h){
+          var t = byNum[h.verse];
+          body.appendChild(el("div",{class:"v" + (/[가-힣]/.test(t||"") ? " ko" : "")},[el("b",{},[String(h.verse)]), t !== undefined ? t : "(이 역본에는 없는 절)"]));
+          if(t !== undefined) currentItems.push({book:h.book, chapter:h.chapter, verse:h.verse, text:t});
+        });
+      }).catch(function(){ clear(body); body.appendChild(document.createTextNode("이 역본을 읽지 못했어요")); });
+    }
+    vers.forEach(function(v){ var b = el("button",{"data-k":v.key, onclick:function(){ show(v); }},[v.label]); tabs.appendChild(b); });
+    copyBtn.addEventListener("click", function(){
+      if(!currentItems.length) return;
+      copyText(formatSelectionForCopy(currentItems, current.label)).then(function(){ showToast("복사했어요 (" + current.label + ")"); });
+    });
+    sheet.appendChild(titleEl); sheet.appendChild(tabs); sheet.appendChild(body);
+    sheet.appendChild(el("div",{class:"row", style:"gap:8px;"},[copyBtn, el("button",{class:"btn", onclick:function(){ backdrop.remove(); }},["닫기"])]));
+    backdrop.appendChild(sheet); document.body.appendChild(backdrop);
+    show(vers.filter(function(v){ return v.key === startKey; })[0] || vers[0]);
+  }
   function refreshSelBar(){
-    var items = chapterHighlights(forBookSel, forChapterSel);
+    var items = selectedItems();
     clear(selBar);
     if(!items.length){ selBar.style.display = "none"; return; }
-    selBar.style.display = "flex";
+    selBar.style.display = "block";
     positionSelBar();
-    selBar.appendChild(el("span",{},[items.length + "개 구절 선택됨"]));
-    var btnRow = el("div",{class:"row", style:"gap:6px;"});
-    btnRow.appendChild(el("button",{class:"btn btn-primary", onclick:function(){
-      var combined = formatSelectionForCopy(items);
-      copyText(combined).then(function(){ showToast(items.length + "개 구절을 한꺼번에 복사했어요"); });
-    }},["📋 선택 복사"]));
-    btnRow.appendChild(el("button",{class:"btn btn-ghost", onclick:function(){ sendToAmsong(items); }},["📖 암송에 추가"]));
-    btnRow.appendChild(el("button",{class:"btn btn-ghost", style:"color:var(--danger);", onclick:function(){
-      items.forEach(function(h){ toggleHighlight(h.book,h.chapter,h.verse,h.text); });
-      verseWrap.querySelectorAll(".verse-row.user-mark").forEach(function(r){
-        r.classList.remove("user-mark");
-        /* 복사(📋)와 이미지 공유(🖼️) 아이콘 둘 다 숨긴다 */
-        r.querySelectorAll(".verse-copy-btn").forEach(function(b){ b.style.display = "none"; });
-      });
-      refreshSelBar();
-    }},["선택 해제"]));
-    selBar.appendChild(btnRow);
+    var allHl = items.every(function(h){ return isHighlighted(h.book, h.chapter, h.verse); });
+    selBar.appendChild(el("div",{class:"sb-title"},[
+      el("span",{},[compactRef(items) + " ", el("small",{},["· " + items.length + "절 선택"])]),
+      el("button",{class:"sb-close", title:"선택 해제", onclick:clearSelection},["✕"])
+    ]));
+    function act(ic, label, fn, cls){ return el("button",{class:cls||"", onclick:fn},[el("span",{class:"ic"},[ic]), label]); }
+    selBar.appendChild(el("div",{class:"sb-main"},[
+      act("🖍", allHl ? "하이라이트 지우기" : "하이라이트", function(){
+        items.forEach(function(h){
+          var on = isHighlighted(h.book, h.chapter, h.verse);
+          if(allHl ? on : !on){ toggleHighlight(h.book, h.chapter, h.verse, h.text); }
+          setRowHighlight(h.verse, !allHl);
+        });
+        showToast(allHl ? "하이라이트를 지웠어요" : "하이라이트 했어요");
+        clearSelection();
+      }, allHl ? "hl-on" : ""),
+      act("📋", "복사", function(){
+        var text = formatSelectionForCopy(items);
+        copyText(text).then(function(){ showToast(items.length + "절을 복사했어요"); });
+        clearSelection();
+      }),
+      act("📖", "암송구절", function(){ sendToAmsong(items); clearSelection(); }),
+      act("✕", "선택 해제", clearSelection)
+    ]));
+    var vers = otherVersions();
+    if(vers.length){
+      var vrow = el("div",{class:"sb-vers"},[el("span",{},["다른 역본"])]);
+      vers.forEach(function(v){ vrow.appendChild(el("button",{onclick:function(){ openOtherVersion(items, v.key); }},[v.label])); });
+      selBar.appendChild(vrow);
+    }
   }
   refreshSelBar();
   var verseWrap = el("div",{class:"verse-view", id:"verseWrap"},[el("div",{class:"empty-hint"},["불러오는 중…"])]);
@@ -2011,21 +2108,6 @@ function renderReading(){
         row.appendChild(el("div",{class:"verse-num"},[String(v.v)]));
         row.appendChild(verseTextEl(v.text));
       }
-      var copyBtn = el("button",{class:"verse-copy-btn", title:"복사", style:marked?"":"display:none;", onclick:function(e){
-        e.stopPropagation();
-        var h = highlightMap[highlightKey(state.book, state.chapter, v.v)];
-        var payload = h ? formatHighlightForCopy(h) : (refLabel(state.book, state.chapter, v.v) + " " + v.text);
-        copyText(payload).then(function(){
-          showToast("복사됐어요 — 묵상 노트에 붙여넣으세요");
-        });
-      }},["📋"]);
-      btnHolder.appendChild(copyBtn);
-      var imageBtn = el("button",{class:"verse-copy-btn", title:"이미지로 공유", style:marked?"":"display:none;", onclick:function(e){
-        e.stopPropagation();
-        var h = highlightMap[highlightKey(state.book, state.chapter, v.v)];
-        if(h) shareVerseImage(h);
-      }},["🖼️"]);
-      btnHolder.appendChild(imageBtn);
       /* 본문 터치 동작: 짧게 터치하면 위/아래 바를 숨기거나 다시 보이게 하고(넓게 보기 전환),
          길게 눌러야(꾹 누르기) 하이라이트가 켜지거나 꺼진다. 스크롤하려고 손가락을 움직인
          경우는 둘 다 무시한다. 복사/이미지 아이콘을 누른 경우도 제외한다. */
@@ -2035,15 +2117,13 @@ function renderReading(){
         var FIRST_PRESS_MS = 300, NEXT_PRESS_MS = 100, MOVE_TOLERANCE = 10;
         var pressTimer = null, startX = 0, startY = 0, longPressFired = false, pointerActive = false, cancelled = false;
         var selectingAtPress = false;
-        function isSelecting(){ return !!verseWrap.querySelector(".verse-row.user-mark"); }
+        function isSelecting(){ return !!verseWrap.querySelector(".verse-row.sel"); }
         function clearPressTimer(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; } }
         function isOnIconBtn(e){ return e.target && e.target.closest && e.target.closest(".verse-copy-btn"); }
         function doHighlightToggle(){
-          var nowOn = toggleHighlight(state.book, state.chapter, v.v, v.text);
-          row.classList.toggle("user-mark", nowOn);
-          copyBtn.style.display = nowOn ? "" : "none";
-          imageBtn.style.display = nowOn ? "" : "none";
-          if(nowOn) showToast("하이라이트 표시됨");
+          /* 꾹 누르면 "임시 선택"을 켜고 끈다(저장되는 하이라이트는 작업 창에서) */
+          if(selected[v.v] !== undefined){ delete selected[v.v]; row.classList.remove("sel"); }
+          else { selected[v.v] = v.text; row.classList.add("sel"); }
           refreshSelBar();
         }
         row.addEventListener("pointerdown", function(e){
@@ -2633,16 +2713,16 @@ var MANUAL_SECTIONS = [
     "위쪽의 **⤢** 버튼으로도 켜고 끌 수 있습니다.",
     "켜둔 상태는 기억해 두었다가 다음에 읽을 때도 그대로 적용됩니다."
   ]},
-  {title:"⭐ 하이라이트 · 복사 · 이미지 공유", items:[
-    "마음에 닿는 구절을 **0.3초 정도 꾹 누르면** 바탕색이 칠해집니다(하이라이트). 다시 꾹 누르면 지워집니다.",
-    "한 구절을 고른 뒤에는 같은 장의 다른 구절을 **살짝(0.1초)만 눌러도** 바로 골라져서, 여러 구절을 쭉쭉 고를 수 있습니다.",
-    "하이라이트한 구절 옆의 **📋**를 누르면 구절이 복사되어 카카오톡·메모 등에 붙여넣을 수 있어요.",
-    "**🖼️**를 누르면 그 구절이 예쁜 이미지 카드로 만들어져 카카오톡 등으로 바로 보내거나 저장할 수 있습니다.",
-    "여러 구절을 하이라이트하면 아래에 **○개 구절 선택됨** 줄이 나타납니다. **📋 선택 복사**를 누르면 고른 구절을 한꺼번에 복사합니다. 예: 로마서 5:6,8 → 본문 … 본문 (로마서 5:6,8 개역개정)",
-    "**선택 해제**를 누르면 이 장의 하이라이트를 한 번에 지웁니다."
+  {title:"⭐ 구절 고르기 · 하이라이트 · 복사", items:[
+    "구절을 **0.3초 정도 꾹 누르면** 회색으로 **선택**됩니다. 이어서 다른 구절은 **살짝(0.1초)만 눌러도** 골라져서 여러 구절을 쭉쭉 고를 수 있어요(다시 누르면 빠짐).",
+    "구절을 고르면 화면 아래에 작업 창이 뜹니다: **🖍 하이라이트 · 📋 복사 · 📖 암송구절 · ✕ 선택 해제**.",
+    "**🖍 하이라이트**를 누르면 고른 구절이 노란색으로 칠해져 저장됩니다. 하이라이트된 구절을 다시 골라 **하이라이트 지우기**를 누르면 지워집니다.",
+    "**📋 복사**는 **지금 고른 구절만** 복사합니다. 예: 로마서 5:6,8 → 본문 … 본문 (로마서 5:6,8 개역개정). 복사하면 선택은 자동으로 풀립니다.",
+    "작업 창 아래의 **다른 역본**(개역한글 · 새번역 · 현대어성경 · NIV)을 누르면 고른 구절을 그 역본으로 바로 볼 수 있고, 그 역본으로 복사도 됩니다.",
+    "하이라이트한 구절은 **⋯ → ⭐ 하이라이트 모아보기**에서 모아 보고 메모를 적을 수 있어요."
   ]},
   {title:"📖 암송 구절로 보내기", items:[
-    "외우고 싶은 구절을 꾹 눌러 고른 뒤, 아래 줄의 **📖 암송에 추가**를 누르세요.",
+    "외우고 싶은 구절을 꾹 눌러 고른 뒤, 아래 작업 창의 **📖 암송구절**을 누르세요.",
     "**말씀암송 앱**이 열리면서 주소·본문·번역본이 채워진 **새 구절 만들기** 화면이 나옵니다. 카테고리만 고르고 **저장**하면 끝!",
     "저장한 구절은 다른 암송 구절과 똑같이 오늘의 복습·짝 점검에 나옵니다.",
     "거꾸로 암송 앱의 구절 화면에서 **📖 앞뒤 문맥 보기**를 누르면 이 앱이 그 장으로 열리고, 암송 구절이 바탕색으로 표시됩니다. 위아래로 앞뒤 구절을 읽고, 좌우로 밀어 앞뒤 장도 볼 수 있어요. 다 보셨으면 맨 위 **‹ 암송으로**(또는 휴대폰의 뒤로 가기)를 누르면 보던 암송 구절로 돌아갑니다."
@@ -2957,7 +3037,6 @@ function openHighlightsModal(){
       actions.appendChild(el("button",{class:"btn", onclick:function(){
         copyText(formatHighlightForCopy(h)).then(function(){ showToast("복사됐어요"); });
       }},["복사"]));
-      actions.appendChild(el("button",{class:"btn", onclick:function(){ shareVerseImage(h); }},["이미지 공유"]));
       actions.appendChild(el("button",{class:"btn", onclick:function(){
         goReading(h.book, h.chapter, h.verse);
         backdrop.remove();

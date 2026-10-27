@@ -295,7 +295,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-27-1">
+<meta name="app-build" content="2026-10-28-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -395,17 +395,19 @@ var BOOK_CATEGORIES = [
 /* 알려진 버전 라벨(추정 가능한 것만; 나머지는 파일명을 그대로 사용)
    영어 성경은 약어를 그대로 쓰고, 한글 성경만 정식 이름으로 매칭한다.
    (chnncv=중국어 신역본, turkish=터키어 성경 — 둘 다 한글 성경이 아니라서 매칭하지 않고 원래 코드 그대로 둠) */
+/* 한글 성경 이름은 사용자가 정리해 준 목록(약자 ↔ 이름) 그대로 쓴다 (2026-10-28) */
 var KNOWN_LABELS = {
-  "korhrv":"개역한글판","kornkrv":"개역개정","engesv":"ESV","enggnt":"GNT(Good News)",
+  "korhrv":"개역한글판", "kornkrv":"개역개정판", "kornrsv":"새번역", "kornkcb":"공동번역개정판",
+  "kchnkrv":"개역개정 국한문", "ckhnkrv":"개역개정 국한문",
+  "kchhrv":"개역한글판 국한문", "ckhhrv":"개역한글판 국한문",
+  "korhchv":"개역한글판 국한문 병행",
+  "korktv":"바른성경", "kchktv":"바른성경국한문", "ckhktv":"바른성경국한문",
+  "korcath":"가톨릭성경", "kordob":"우리말성경", "koreasy":"쉬운성경", "korhkjv":"킹제임스흠정역",
+  "korklb":"현대인의 성경", "kortkv":"현대어성경",
+  "개역한글":"개역한글판", "개역개정":"개역개정판",
+  "engesv":"ESV","enggnt":"GNT(Good News)",
   "engniv":"NIV","engnasb":"NASB","engmsg":"The Message","engnkjv":"NKJV","engkjv":"KJV",
-  "enghcsb":"HCSB","engcev":"CEV","engisv":"ISV","engnlt":"NLT","engnrsv":"NRSV","engtniv":"TNIV",
-  "ckhhrv":"개역한글 국한문판","ckhktv":"바른성경 국한문판",
-  "ckhnkrv":"개역개정 국한문판","kchnkrv":"개역개정 국한문판",
-  "korcath":"가톨릭 성경","kordob":"우리말성경","koreasy":"쉬운성경",
-  "korhchv":"한글 킹제임스 성경","korhkjv":"킹제임스 흠정역",
-  "개역한글":"개역한글판","개역개정":"개역개정판",
-  "korklb":"현대인의 성경","korktv":"바른성경","kornkcb":"공동번역 성서 개정판",
-  "kornrsv":"새번역","kortkv":"현대어성경"
+  "enghcsb":"HCSB","engcev":"CEV","engisv":"ISV","engnlt":"NLT","engnrsv":"NRSV","engtniv":"TNIV"
 };
 var AUDIO_VERSION_HINT = "kornkrv"; /* 오디오는 개역개정 낭독 */
 
@@ -569,6 +571,13 @@ function findVersionKey(v){
   for(var i=0;i<keys.length;i++){
     var info = state.lfaFiles[keys[i]];
     if(info && labelForFile(info.displayName) === v) return keys[i];
+  }
+  /* 이름을 바꾸기 전에 암송 앱에 저장된 구절(예: "개역개정", "가톨릭 성경")도 찾아가도록
+     띄어쓰기와 끝의 "판"을 무시하고 한 번 더 비교한다 */
+  function norm(s){ return String(s || "").replace(/\s+/g, "").replace(/판$/, ""); }
+  for(var j=0;j<keys.length;j++){
+    var info2 = state.lfaFiles[keys[j]];
+    if(info2 && norm(labelForFile(info2.displayName)) === norm(v)) return keys[j];
   }
   return null;
 }
@@ -948,8 +957,13 @@ function versionKeyCompare(a, b){
   var lb = state.lfaFiles[b] ? labelForFile(state.lfaFiles[b].displayName) : b;
   var ka = isKoreanLabel(la) ? 0 : 1, kb = isKoreanLabel(lb) ? 0 : 1;
   if(ka !== kb) return ka - kb;
+  /* 한글 성경은 사용자가 정해 준 순서(1 개역한글판 … 15 현대어성경)대로 */
+  var oa = KOREAN_ORDER.indexOf(String(a).toLowerCase()), ob = KOREAN_ORDER.indexOf(String(b).toLowerCase());
+  if(oa < 0) oa = 999; if(ob < 0) ob = 999;
+  if(oa !== ob) return oa - ob;
   return la.localeCompare(lb, "ko");
 }
+var KOREAN_ORDER = ["korhrv","kornkrv","kornrsv","kornkcb","kchnkrv","ckhnkrv","kchhrv","ckhhrv","korhchv","korktv","kchktv","ckhktv","korcath","kordob","koreasy","korhkjv","korklb","kortkv"];
 
 /* 파일 경로 하나를 보고 성경 본문(.lfa)인지, 오디오(mp3 폴더 안의 .mp3)인지 판단한다.
    - 폴더 이름은 따지지 않는다: 압축을 풀 때 휴대폰이 같은 이름이 있으면 "bible(1)"처럼 바꿔

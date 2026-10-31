@@ -273,6 +273,12 @@
   /* 오디오 "따라 읽기" 켜기/끄기 버튼 */
   .follow-btn{flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-width:52px; padding:4px 6px; border-radius:10px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text-dim); font-size:10.5px; font-weight:700; line-height:1.1; cursor:pointer;}
   .follow-btn .ic{font-size:17px; line-height:1;}
+  /* 음성 듣기(TTS) 줄: MP3가 없는 장에서 휴대폰 음성으로 읽어 준다 */
+  .tts-play{flex:none; width:44px; height:44px; border-radius:50%; border:0; background:var(--accent); color:#111; font-size:19px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .tts-info{flex:1; min-width:0; font-family:var(--font-ui); line-height:1.25;}
+  .tts-info b{display:block; font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .tts-info span{font-size:12px; color:var(--text-dim);}
+  .tts-rate{flex:none; min-width:52px; padding:8px 6px; border-radius:10px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); font-family:var(--font-ui); font-size:14px; font-weight:800; cursor:pointer;}
   .follow-btn.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
   /* 지금 오디오가 읽고 있는 절: 옅은 바탕 + 왼쪽 세로줄 */
   .verse-row.reading-now{background:rgba(127,127,127,.17); box-shadow:inset 3px 0 0 var(--accent); transition:background .25s ease;}
@@ -305,7 +311,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-11-01-1">
+<meta name="app-build" content="2026-11-02-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1190,13 +1196,13 @@ function idbClearStore(storeName){
 }
 /* 선택한 파일들(성경 데이터 + MP3)을 통째로 기기에 저장 — <input webkitdirectory> 방식(폴더
    핸들을 기억할 수 없는 브라우저)에서도 다음부터 다시 고를 필요 없이 자동으로 열리게 해준다 */
-function cacheFilesToIDB(rawFiles){
+function cacheFilesToIDB(rawFiles, append){
   return idbOpen().then(function(db){
     return new Promise(function(resolve){
       try{
         var tx = db.transaction(IDB_FILES_STORE, "readwrite");
         var store = tx.objectStore(IDB_FILES_STORE);
-        store.clear();
+        if(!append) store.clear();   /* "추가하기"일 때는 이미 저장된 자료를 지우지 않는다 */
         /* 성경 본문(.lfa)과 mp3 폴더의 오디오만 저장한다 — 실수로 다른 파일이 섞인 더 큰 폴더를
            골라도 쓸데없는 파일까지 기기에 복사하지 않도록 */
         rawFiles.forEach(function(item){ if(classifyBiblePath(item.relPath)) store.put(item, item.relPath); });
@@ -1234,6 +1240,71 @@ function connectViaInput(){
     });
     input.click();
   });
+}
+
+/* ---- 파일로 연결(간편판): 카카오톡 등으로 받은 파일을 압축 풀지 않고 그대로 고른다 ----
+   · .zip  : 안에 든 .lfa(성경)와 .mp3(오디오)를 꺼내 쓴다(압축 풀기 필요 없음)
+   · .lfa  : 성경 한 권(번역본)을 그대로 쓴다
+   · .mp3  : 오디오(파일명 책번호_장.mp3)
+   폴더 구조가 없으므로, 저장할 때 경로를 "files/이름.lfa", "mp3/이름.mp3"로 붙여 두면
+   기존 폴더 방식과 똑같이 다음부터 자동으로 열린다. */
+function pickFiles(){
+  return new Promise(function(resolve, reject){
+    var input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.style.display = "none";
+    document.body.appendChild(input);
+    input.addEventListener("change", function(){
+      var list = input.files && input.files.length ? Array.prototype.slice.call(input.files) : [];
+      document.body.removeChild(input);
+      if(list.length) resolve(list); else reject(new Error("no-selection"));
+    });
+    input.click();
+  });
+}
+async function expandPickedFiles(list, onProgress){
+  var out = [];
+  function baseName(p){ return String(p).replace(/\\/g,"/").split("/").pop(); }
+  for(var i=0;i<list.length;i++){
+    var f = list[i], name = f.name || "";
+    if(/\.lfa$/i.test(name)){ out.push({name:name, relPath:"files/" + name, file:f}); continue; }
+    if(/\.mp3$/i.test(name)){ out.push({name:name, relPath:"mp3/" + name, file:f}); continue; }
+    if(/\.zip$/i.test(name) || f.type === "application/zip" || f.type === "application/x-zip-compressed"){
+      if(onProgress) onProgress("📦 " + name + " 여는 중…");
+      var zip = await JSZip.loadAsync(await f.arrayBuffer());
+      var entries = Object.keys(zip.files).filter(function(k){ return !zip.files[k].dir; });
+      /* 이 zip 자체가 성경 파일(.lfa 이름만 바뀐 것, 안에 .lfb가 들어 있음)이면 한 권으로 취급 */
+      if(entries.some(function(k){ return /\.lfb$/i.test(k); }) && !entries.some(function(k){ return /\.lfa$/i.test(k); })){
+        var nm = name.replace(/\.zip$/i, ".lfa");
+        out.push({name:nm, relPath:"files/" + nm, file:new File([f], nm)});
+        continue;
+      }
+      for(var j=0;j<entries.length;j++){
+        var k = entries[j], b = baseName(k);
+        if(/^__MACOSX\//.test(k) || /^\._/.test(b)) continue;
+        if(/\.lfa$/i.test(b)){
+          var blob = await zip.files[k].async("blob");
+          out.push({name:b, relPath:"files/" + b, file:new File([blob], b)});
+        } else if(/\.mp3$/i.test(b)){
+          var mb = await zip.files[k].async("blob");
+          out.push({name:b, relPath:"mp3/" + b, file:new File([mb], b, {type:"audio/mpeg"})});
+        }
+      }
+    }
+  }
+  return out;
+}
+/* 이미 연결된 자료에 더하기(번역본 추가, 오디오 추가) — 지금 있는 것은 그대로 두고 합친다 */
+function mergeScannedFiles(rawFiles){
+  var idx = indexFilesFromList(rawFiles);
+  state.lfaFiles = state.lfaFiles || {};
+  Object.keys(idx.lfa).forEach(function(k){ state.lfaFiles[k] = idx.lfa[k]; delete state.zipCache[k]; });
+  state.mp3Files = state.mp3Files || {};
+  Object.keys(idx.mp3).forEach(function(k){ state.mp3Files[k] = idx.mp3[k]; });
+  state.chapterCache = {}; state.searchIndex = null;
+  state.connected = Object.keys(state.lfaFiles).length > 0;
+  return {lfa:Object.keys(idx.lfa).length, mp3:Object.keys(idx.mp3).length};
 }
 
 /* 브라우저 권한 재확인(requestPermission)은 반드시 사용자의 클릭(제스처) 안에서 호출해야 통과된다.
@@ -1543,21 +1614,22 @@ function render(){
 function renderConnect(){
   var wrap = el("div",{class:"center-pane"});
   var reconnecting = !!state._pendingReconnectHandle;
-  wrap.appendChild(el("h1",{},["📖 성경읽기 폴더 연결"]));
+  wrap.appendChild(el("h1",{},[reconnecting ? "📖 성경읽기 폴더 연결" : "📖 성경 자료 연결"]));
   if(reconnecting){
     wrap.appendChild(el("p",{},["이전에 연결하셨던 ", el("b",{},["bible"]), " 폴더가 있어요. 아래 버튼을 누르면 새로 고르지 않고 바로 다시 연결됩니다."]));
     var btn1 = el("button",{class:"btn btn-primary", style:"padding:12px 22px;font-size:14px;", onclick:onReconnectClick},["🔓 이전 폴더 다시 연결하기"]);
     wrap.appendChild(btn1);
     wrap.appendChild(el("button",{class:"btn btn-ghost", style:"font-size:12.5px; margin-top:4px;", onclick:onConnectClick},["다른 폴더 새로 선택"]));
   } else {
-    wrap.appendChild(el("p",{},["스마트폰이나 컴퓨터에 준비한 ", el("b",{},["bible"]), " 폴더를 연결하면, 서버 없이 그 안의 성경 데이터와 오디오로 바로 읽기를 시작합니다."]));
+    wrap.appendChild(el("p",{},["카카오톡 등으로 받은 ", el("b",{},["성경 파일"]), "을 고르면 바로 읽기를 시작합니다. 압축을 풀 필요가 없어요."]));
     var steps = el("div",{class:"setup-steps"},[
-      el("div",{},[el("b",{},["1."])," bible 폴더 안에 .lfa 성경 파일들을 넣습니다"]),
-      el("div",{},[el("b",{},["2."])," bible 폴더 안에 MP3 폴더(오디오)를 넣습니다"]),
-      el("div",{},[el("b",{},["3."])," 아래 버튼으로 bible 폴더를 선택하세요 (bible(1)처럼 이름이 달라도 괜찮아요)"])
+      el("div",{},[el("b",{},["1."])," 카카오톡으로 받은 성경 파일(예: 말씀나눔_성경_간편판.zip)을 눌러 휴대폰에 저장합니다"]),
+      el("div",{},[el("b",{},["2."])," 아래 ", el("b",{},["📄 받은 성경 파일 고르기"]), "를 누르고 그 파일을 고르면 끝!"]),
+      el("div",{},[el("b",{},["※"])," 오디오(MP3)가 없어도 휴대폰 음성으로 읽어 주는 ", el("b",{},["🗣 음성 듣기"]), "가 됩니다"])
     ]);
     wrap.appendChild(steps);
-    var btn = el("button",{class:"btn btn-primary", style:"padding:12px 22px;font-size:14px;", onclick:onConnectClick},["📁 bible 폴더 연결하기"]);
+    wrap.appendChild(el("button",{class:"btn btn-primary", style:"padding:13px 22px;font-size:15px;", onclick:onConnectFilesClick},["📄 받은 성경 파일 고르기"]));
+    var btn = el("button",{class:"btn", style:"padding:10px 18px;font-size:13px; margin-top:2px;", onclick:onConnectClick},["📁 bible 폴더 연결하기 (오디오 포함 전체판)"]);
     wrap.appendChild(btn);
     wrap.appendChild(el("p",{style:"font-size:11.5px; color:var(--text-dim); max-width:320px;"},[
       "한 번 연결하면 다음부터는 자동으로 열려요. (처음 연결할 때 자료 양이 많으면 기기에 저장하느라 잠깐 시간이 걸릴 수 있어요)"
@@ -1606,12 +1678,12 @@ async function onConnectClick(){
 /* 폴더 핸들을 기억 못 하는 브라우저용: 선택한 파일을 화면 전환 후 백그라운드로 기기에 저장해서
    다음부터는 폴더를 다시 고르지 않아도 자동으로 열리게 한다. 읽기 시작을 막지 않기 위해
    goLetters() 이후, 읽는 도중에 조용히 진행된다. */
-function cacheFilesInBackground(files){
+function cacheFilesInBackground(files, append){
   if($cacheBanner){
     $cacheBanner.style.display = "flex";
     $cacheBanner.querySelector("span").textContent = "💾 다음에도 자동으로 열리도록 저장하는 중… (창을 닫지 말아주세요)";
   }
-  cacheFilesToIDB(files).then(function(success){
+  cacheFilesToIDB(files, append).then(function(success){
     if(success){
       idbSet("filesCachedAt", Date.now(), IDB_META_STORE);
       if($cacheBanner){
@@ -1623,6 +1695,49 @@ function cacheFilesInBackground(files){
       setTimeout(function(){ if($cacheBanner) $cacheBanner.style.display = "none"; }, 5000);
     }
   });
+}
+
+async function onConnectFilesClick(){
+  var errBox = document.getElementById("connectError");
+  if(errBox) errBox.style.display = "none";
+  try{
+    var list = await pickFiles();
+    showToast("성경 파일을 여는 중…");
+    var files = await expandPickedFiles(list);
+    var ok = applyScannedFiles(files);
+    if(!ok){
+      if(errBox){
+        errBox.textContent = "고른 파일에서 성경 자료(.lfa)를 찾지 못했어요. 카카오톡으로 받은 \"말씀나눔_성경_간편판.zip\" 같은 파일을 골라 주세요.";
+        errBox.style.display = "block";
+      }
+      return;
+    }
+    state._pendingReconnectHandle = null;
+    updateHeaderForConnected();
+    if(!applyPendingGo()) goLetters();
+    cacheFilesInBackground(files, false);
+  }catch(e){
+    if(e && e.message === "no-selection") return;
+    if(errBox){ errBox.textContent = "파일을 여는 중 문제가 발생했어요: " + (e && e.message ? e.message : e); errBox.style.display = "block"; }
+  }
+}
+/* ⋯ 설정 → 성경 버전·오디오 추가: 파일(zip/lfa/mp3) 또는 폴더(오디오 MP3 폴더 등) */
+async function addMoreData(kind){
+  try{
+    var files;
+    if(kind === "folder") files = await connectViaInput();
+    else files = await expandPickedFiles(await pickFiles(), function(msg){ showToast(msg); });
+    var useful = files.filter(function(it){ return classifyBiblePath(it.relPath || it.name); });
+    if(!useful.length){ showToast("성경 파일(.lfa)이나 오디오(.mp3)를 찾지 못했어요"); return; }
+    var n = mergeScannedFiles(useful);
+    updateHeaderForConnected();
+    cacheFilesInBackground(useful, true);
+    showToast("추가했어요 — 성경 " + n.lfa + "개, 오디오 " + n.mp3 + "개");
+    render();
+  }catch(e){
+    if(e && e.message === "no-selection") return;
+    showToast("추가하지 못했어요: " + (e && e.message ? e.message : e));
+  }
 }
 
 async function onReconnectClick(){
@@ -2264,6 +2379,7 @@ function renderReading(){
     if(state.book !== forBook || state.chapter !== forChapter || state.screen !== "reading") return;
     var audio = getPlayerEl();
     if(audioFile){
+      if(tts.on && (tts.book !== forBook || tts.chapter !== forChapter)) ttsPause();   /* 다른 장의 음성 읽기는 멈춤 */
       /* 이미 이 장을 재생 중이면(화면이 꺼진 동안 다음 장으로 넘어간 경우 등) 그대로 이어서 들려준다 */
       if(player.book !== forBook || player.chapter !== forChapter){
         if(!audio.paused) audio.pause();
@@ -2280,6 +2396,14 @@ function renderReading(){
       /* 이 장은 오디오가 없다 — 다른 장을 재생하던 중이었으면 멈춘다 */
       if(player.book !== null && (player.book !== forBook || player.chapter !== forChapter)){ audio.pause(); }
       if(state._audioBarEl){ state._audioBarEl.remove(); state._audioBarEl = null; positionSelBar(); }
+      /* MP3가 없으면 휴대폰 음성(TTS)으로 읽어 주는 줄을 대신 보여준다 */
+      if(ttsSupported()){
+        var tbar = buildTtsBar(forBook, forChapter);
+        document.body.appendChild(tbar);
+        state._audioBarEl = tbar;
+        positionSelBar();
+        if(tts.on && tts.book === forBook && tts.chapter === forChapter) ttsMark(tts.verses[tts.idx] && tts.verses[tts.idx].v, true);
+      }
     }
   });
 }
@@ -2676,6 +2800,155 @@ function verseTextEl(text){
   return el("div",{class:"verse-text"},[m[1] + " ", el("span",{class:"verse-note"},["/ " + m[2]])]);
 }
 
+/* ---------- 🗣 음성 듣기(TTS): MP3가 없는 분도 휴대폰 음성으로 성경을 듣기 ----------
+   한 절씩 읽기 때문에 지금 읽는 절이 정확히 표시되고(📖 따라 읽기), 한 장이 끝나면 다음 장으로 이어진다.
+   읽는 동안에는 화면이 꺼지지 않게 해 둔다(휴대폰에 따라 화면이 꺼지면 음성이 멈출 수 있어서). */
+var LS_TTSRATE = "bible_ttsrate_v1";
+var TTS_RATES = [0.8, 0.9, 1.0, 1.1, 1.25, 1.5];
+var tts = { on:false, book:null, chapter:null, version:null, verses:[], idx:0, gen:0, holdUntil:0, wake:null, catchUp:false, _u:null };
+function ttsSupported(){ return ("speechSynthesis" in window) && typeof SpeechSynthesisUtterance !== "undefined"; }
+function ttsRate(){ var r = Number(lsGet(LS_TTSRATE, 1)); return isFinite(r) && r > 0 ? r : 1; }
+function ttsCleanText(t){
+  return String(t || "")
+    .replace(/\s+\/\s*[㉠-㉭㈀-㈍①-⑳ⓐ-ⓩ⒜-⒵*].*$/, "")      /* 본문 끝의 " / ㉠…" 주석은 읽지 않음 */
+    .replace(/[㉠-㉭㈀-㈍①-⑳ⓐ-ⓩ⒜-⒵]/g, "")
+    .replace(/[\[\]{}<>]/g, " ");
+}
+function ttsPickVoice(lang){
+  var vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [], pref = lang.slice(0,2);
+  var cands = vs.filter(function(v){ return (v.lang || "").replace("_","-").toLowerCase().indexOf(pref) === 0; });
+  if(!cands.length) return null;
+  cands.sort(function(a,b){ return (b.localService ? 1 : 0) - (a.localService ? 1 : 0); });   /* 휴대폰에 내장된 음성 우선(오프라인에서도 됨) */
+  return cands[0];
+}
+function ttsWake(on){
+  try{
+    if(on && !tts.wake && navigator.wakeLock) navigator.wakeLock.request("screen").then(function(w){ tts.wake = w; w.addEventListener("release", function(){ tts.wake = null; }); }).catch(function(){});
+    if(!on && tts.wake){ tts.wake.release(); tts.wake = null; }
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", function(){
+  if(document.hidden) return;
+  if(tts.on) ttsWake(true);   /* 화면 켜짐 유지는 다른 앱에 다녀오면 풀리므로 다시 건다 */
+  if(tts.catchUp){ tts.catchUp = false; if(state.screen === "reading" && tts.book && (state.book !== tts.book || state.chapter !== tts.chapter)) goReading(tts.book, tts.chapter); }
+});
+window.addEventListener("touchmove", function(){ tts.holdUntil = Date.now() + 6000; }, {passive:true});
+function ttsMark(v, force){
+  if(!v || !isFollowOn() || document.hidden) return;
+  if(state.screen !== "reading" || state.book !== tts.book || state.chapter !== tts.chapter) return;
+  var row = document.querySelector('.verse-row[data-v="' + v + '"]'); if(!row) return;
+  var old = document.querySelector(".verse-row.reading-now"); if(old && old !== row) old.classList.remove("reading-now");
+  row.classList.add("reading-now");
+  if(!force && Date.now() < tts.holdUntil) return;
+  var top0 = 0, h = document.querySelector("header");
+  if(h && !document.body.classList.contains("immersive")) top0 += h.offsetHeight;
+  var ph = document.querySelector(".par-head"); if(ph) top0 += ph.offsetHeight;
+  var bottomBar = (state._audioBarEl && !document.body.classList.contains("immersive")) ? state._audioBarEl.offsetHeight : 0;
+  var y = row.getBoundingClientRect().top + window.pageYOffset - top0 - (window.innerHeight - top0 - bottomBar) * 0.22;
+  window.scrollTo({top: Math.max(0, y), behavior: "smooth"});
+}
+function ttsUpdateUI(){
+  var bar = document.querySelector(".tts-bar"); if(!bar) return;
+  var mine = tts.book === Number(bar.dataset.book) && tts.chapter === Number(bar.dataset.chapter);
+  var playing = tts.on && mine;
+  bar.querySelector(".tts-play").textContent = playing ? "❚❚" : "▶";
+  bar.querySelector(".tts-play").title = playing ? "멈춤" : "음성으로 듣기";
+  var cur = tts.verses[tts.idx];
+  bar.querySelector(".tts-info span").textContent = playing && cur ? (cur.v + "절 읽는 중") : "휴대폰 음성으로 읽어 드려요";
+  var rr = ttsRate(); bar.querySelector(".tts-rate").textContent = (rr % 1 === 0 ? rr.toFixed(1) : String(rr)) + "x";
+}
+function ttsSpeakCurrent(){
+  var gen = ++tts.gen;
+  if(!tts.on) return;
+  if(tts.idx >= tts.verses.length){ ttsNextChapter(); return; }
+  var v = tts.verses[tts.idx];
+  var text = ttsCleanText(v.text);
+  if(!text.trim()){ tts.idx++; ttsSpeakCurrent(); return; }
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = /[가-힣]/.test(text) ? "ko-KR" : "en-US";
+  var voice = ttsPickVoice(u.lang); if(voice) u.voice = voice;
+  u.rate = ttsRate();
+  u.onstart = function(){ if(gen === tts.gen){ ttsMark(v.v); ttsUpdateUI(); } };
+  u.onend = function(){ if(gen !== tts.gen || !tts.on) return; tts.idx++; ttsSpeakCurrent(); };
+  u.onerror = function(e){
+    if(gen !== tts.gen || !tts.on) return;
+    if(e && (e.error === "interrupted" || e.error === "canceled")) return;
+    tts.idx++; setTimeout(ttsSpeakCurrent, 200);
+  };
+  tts._u = u;   /* 일부 브라우저에서 읽는 도중 사라지지 않도록 붙잡아 둔다 */
+  speechSynthesis.speak(u);
+  ttsUpdateUI();
+}
+async function ttsLoad(book, chapter){
+  var vs = await getChapterVerses(state.version, book, chapter);
+  tts.book = book; tts.chapter = chapter; tts.version = state.version; tts.verses = vs || [];
+}
+async function ttsStart(book, chapter, fromVerse){
+  if(!ttsSupported()) return;
+  if(player.el && !player.el.paused) player.el.pause();     /* MP3가 나오고 있으면 멈춤 */
+  try{ speechSynthesis.cancel(); }catch(e){}
+  var resume = tts.book === book && tts.chapter === chapter && tts.version === state.version && tts.verses.length;
+  if(!resume){ await ttsLoad(book, chapter); tts.idx = 0; }
+  if(fromVerse){ for(var i=0;i<tts.verses.length;i++){ if(tts.verses[i].v === fromVerse){ tts.idx = i; break; } } }
+  if(!tts.verses.length){ showToast("이 장은 읽을 본문이 없어요"); return; }
+  if(tts.idx >= tts.verses.length) tts.idx = 0;
+  tts.on = true; tts.holdUntil = 0;
+  ttsWake(true);
+  setTimeout(ttsSpeakCurrent, 60);   /* cancel 직후 바로 speak하면 무시되는 기기가 있어 잠깐 띄움 */
+}
+function ttsPause(){
+  tts.on = false; tts.gen++;
+  try{ speechSynthesis.cancel(); }catch(e){}
+  ttsWake(false);
+  ttsUpdateUI();
+}
+async function ttsNextChapter(){
+  var fromBook = tts.book, fromChapter = tts.chapter;
+  var t = await relativeChapter(fromBook, fromChapter, 1);
+  if(!t || !tts.on){ ttsPause(); return; }
+  await ttsLoad(t.book, t.chapter); tts.idx = 0;
+  if(!tts.verses.length){ ttsPause(); showToast("다음 장 본문이 없어 읽기를 멈췄어요"); return; }
+  var watching = state.screen === "reading" && state.book === fromBook && state.chapter === fromChapter;
+  if(watching){
+    if(document.hidden) tts.catchUp = true;
+    else { state._swipeDir = 1; goReading(t.book, t.chapter); }
+  }
+  setTimeout(ttsSpeakCurrent, 150);
+}
+function buildTtsBar(book, chapter){
+  var bar = el("div",{class:"audio-bar tts-bar", "data-book":String(book), "data-chapter":String(chapter)});
+  /* 다른 장을 직접 열었으면 그 전에 읽던 음성은 멈춘다(자동으로 다음 장으로 넘어온 경우는 계속) */
+  if(tts.on && (tts.book !== book || tts.chapter !== chapter)) ttsPause();
+  var b = bookByNum(book);
+  bar.appendChild(el("button",{class:"tts-play", onclick:function(){
+    if(tts.on && tts.book === book && tts.chapter === chapter) ttsPause();
+    else {
+      /* 구절을 골라 둔 상태면 그 절부터 읽는다 */
+      var firstSel = document.querySelector(".verse-row.sel");
+      ttsStart(book, chapter, firstSel ? Number(firstSel.dataset.v) : null);
+    }
+  }},["▶"]));
+  bar.appendChild(el("div",{class:"tts-info"},[el("b",{},["🗣 음성 듣기 · " + (b ? b.ko : "") + " " + chapter + "장"]), el("span",{},[""])]));
+  bar.appendChild(el("button",{class:"tts-rate", title:"읽는 속도", onclick:function(){
+    var r = ttsRate(), i = TTS_RATES.indexOf(r);
+    var nr = TTS_RATES[(i + 1) % TTS_RATES.length];
+    lsSet(LS_TTSRATE, nr);
+    if(tts.on){ tts.gen++; try{ speechSynthesis.cancel(); }catch(e){} setTimeout(ttsSpeakCurrent, 80); }
+    ttsUpdateUI(); showToast("읽는 속도 " + nr + "배");
+  }},["1.0x"]));
+  var fb = el("button",{class:"follow-btn" + (isFollowOn() ? " on" : ""), title:"읽는 절을 따라 본문 자동 스크롤"},[el("span",{class:"ic"},["📖"]), el("span",{},["따라 읽기"])]);
+  fb.addEventListener("click", function(){
+    var now = !isFollowOn(); lsSet(LS_FOLLOW, now); fb.classList.toggle("on", now);
+    if(!now){ var o = document.querySelector(".verse-row.reading-now"); if(o) o.classList.remove("reading-now"); }
+    else if(tts.on && tts.verses[tts.idx]) ttsMark(tts.verses[tts.idx].v, true);
+  });
+  bar.appendChild(fb);
+  setTimeout(ttsUpdateUI, 0);
+  return bar;
+}
+/* MP3를 틀면 음성 읽기는 멈춤 */
+document.addEventListener("play", function(e){ if(e.target && e.target.tagName === "AUDIO" && tts.on) ttsPause(); }, true);
+
 async function stepChapter(delta){ return gotoRelativeChapter(delta, false); }
 
 /* 좌우 밀기 / 장 끝 버튼으로 장을 넘길 때: 넘어가는 방향을 기억해 애니메이션을 주고,
@@ -2737,6 +3010,11 @@ render = function(){
 /* ---------- 사용설명서 (⋯ 설정 → 📖 사용설명서, 그리고 첫 연결 화면에서도 열 수 있음) ----------
    **굵게** 표시한 부분은 화면에서 실제로 보이는 버튼/메뉴 이름이다. 기능을 바꾸면 여기도 같이 고친다. */
 var MANUAL_SECTIONS = [
+  {title:"📲 처음 연결 · 성경/오디오 추가", items:[
+    "카카오톡으로 받은 성경 파일(예: **말씀나눔_성경_간편판.zip**)을 눌러 휴대폰에 저장한 뒤, 앱 첫 화면의 **📄 받은 성경 파일 고르기**에서 그 파일을 고르면 끝입니다. 압축을 풀 필요가 없어요.",
+    "다른 번역본이나 오디오(MP3)는 나중에 **⋯ → ➕ 성경 버전·오디오 추가**로 더할 수 있어요. 이미 있는 자료는 그대로 남습니다.",
+    "오디오 전체(약 2GB)를 쓰려면 압축을 푼 **bible 폴더**를 **📁 bible 폴더 연결하기** 또는 **📁 폴더 추가(MP3)**로 고르세요."
+  ]},
   {title:"📚 성경 찾아 읽기", steps:true, items:[
     "맨 위 왼쪽의 큰 **📚 전체** 버튼을 누르면 성경 66권 목록이 나옵니다.",
     "첫 화면은 두 가지 방식 중 고를 수 있어요. 맨 위의 **📚 분류별 보기 / 📋 구약·신약 목록**을 누르면 바로 바뀝니다(⋯ → **📚 첫 화면**에서도 바꿀 수 있음).",
@@ -2804,6 +3082,13 @@ var MANUAL_SECTIONS = [
     "**📖 따라 읽기**(재생 줄 왼쪽 버튼)가 켜져 있으면, 지금 들리는 구절이 옅은 바탕으로 표시되고 본문이 저절로 따라 올라갑니다. 귀로 들으며 눈으로 함께 읽으세요.",
     "앞뒤 구절을 보려고 손가락으로 스크롤하면 6초 동안은 따라가기를 잠시 멈췄다가 다시 따라갑니다. 끄고 싶으면 **📖 따라 읽기**를 한 번 더 누르세요.",
     "구절 위치는 낭독의 쉼을 분석해 맞추므로 대부분 정확하지만, 가끔 한 구절쯤 앞서거나 늦을 수 있어요."
+  ]},
+  {title:"🗣 음성으로 듣기 (MP3가 없을 때)", items:[
+    "오디오(MP3)가 없는 장은 화면 아래에 **🗣 음성으로 듣기** 줄이 나옵니다. **▶**를 누르면 휴대폰 음성이 한 절씩 읽어 줍니다(지금 보고 있는 번역본으로, NIV는 영어 음성으로).",
+    "읽는 절이 표시되고 본문이 따라 올라갑니다(**📖 따라 읽기**). 한 장이 끝나면 다음 장으로 이어서 읽어요.",
+    "**1.0x** 단추로 읽는 속도를 바꿀 수 있어요. 구절을 골라 둔 채 ▶를 누르면 그 절부터 읽습니다.",
+    "음성으로 읽는 동안에는 화면이 꺼지지 않게 해 둡니다(휴대폰에 따라 화면이 꺼지면 음성이 멈출 수 있어서). 화면을 끄고 듣고 싶으면 MP3 오디오를 추가하세요.",
+    "목소리는 휴대폰에 들어 있는 음성을 씁니다. 삼성폰은 설정 → 일반 → 텍스트 음성 변환에서 바꿀 수 있어요."
   ]},
   {title:"✅ 읽음 표시", items:[
     "본문 위쪽의 **읽음으로 표시**를 체크하면 그 장을 읽은 것으로 기록되고, 장 번호 버튼의 색이 바뀝니다.",
@@ -2982,6 +3267,15 @@ function openSettingsModal(){
   sheet.appendChild(el("div",{class:"theme-row"},[
     el("div",{class:"label"},["💧 침례 → 세례"]),
     el("div",{class:"controls"},[ bapBtn("sere","세례로 통일"), bapBtn("original","원문 그대로") ])
+  ]));
+  /* 성경 버전·오디오 더하기 (지금 있는 자료는 그대로 두고 합침) */
+  sheet.appendChild(el("div",{class:"theme-row", style:"flex-direction:column; align-items:stretch; gap:8px;"},[
+    el("div",{class:"label"},["➕ 성경 버전·오디오 추가"]),
+    el("div",{style:"font-size:12.5px; color:var(--text-dim); line-height:1.6;"},["카카오톡으로 받은 다른 번역본(.lfa·.zip)이나 오디오 MP3를 더할 수 있어요. 지금 있는 자료는 그대로 남아요."]),
+    el("div",{class:"row", style:"gap:8px;"},[
+      el("button",{class:"btn btn-primary", style:"flex:1;", onclick:function(){ backdrop.remove(); addMoreData("files"); }},["📄 파일 추가"]),
+      el("button",{class:"btn", style:"flex:1;", onclick:function(){ backdrop.remove(); addMoreData("folder"); }},["📁 폴더 추가(MP3)"])
+    ])
   ]));
   /* 새 버전 확인 · 비행기 모드 준비 상태 */
   var updStatus = el("div",{style:"font-size:12.5px; color:var(--text-dim); margin-top:6px; line-height:1.6;"},[""]);

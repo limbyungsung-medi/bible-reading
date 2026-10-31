@@ -305,7 +305,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-10-31-1">
+<meta name="app-build" content="2026-11-01-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2826,6 +2826,11 @@ var MANUAL_SECTIONS = [
     "한글 본문은 잘 보이는 **고딕체(프리텐다드)**가 기본입니다. 종이 성경처럼 명조(바탕)체가 좋으면 **⋯** → **🔤 한글 글꼴**에서 **명조**를 누르세요(영어 본문 글꼴은 그대로).",
     "바꾼 크기와 글꼴은 기억되어 다음에도 그대로 적용됩니다."
   ]},
+  {title:"✈️ 비행기 모드(인터넷 없이) 쓰기", items:[
+    "인터넷이 될 때 앱을 **한 번 열어 두면**, 앱 화면이 휴대폰에 저장되어 **비행기 모드에서도** 성경 읽기·검색·하이라이트·오디오 듣기를 그대로 쓸 수 있어요(성경 자료와 오디오는 원래 휴대폰 안에 있음).",
+    "저장되었는지는 **⋯ → 🔄 새 버전 확인** 칸에서 \"비행기 모드에서도 열 수 있도록 저장되어 있어요\"로 확인할 수 있어요.",
+    "인터넷이 없을 때는 새 버전 확인을 하지 않고, 인터넷이 다시 되면 자동으로 확인합니다. 원할 때는 **지금 확인**을 누르세요."
+  ]},
   {title:"💾 내 자료 백업 · 다른 폰으로 옮기기", items:[
     "**⋯** → **⬇️ 내 자료 내보내기**를 누르면 하이라이트, 메모, 읽음 기록, 글자 크기가 파일 하나로 저장됩니다.",
     "새 폰이나 다른 기기에서 **⬆️ 내 자료 가져오기**로 그 파일을 고르면 그대로 옮겨집니다.",
@@ -2977,6 +2982,19 @@ function openSettingsModal(){
   sheet.appendChild(el("div",{class:"theme-row"},[
     el("div",{class:"label"},["💧 침례 → 세례"]),
     el("div",{class:"controls"},[ bapBtn("sere","세례로 통일"), bapBtn("original","원문 그대로") ])
+  ]));
+  /* 새 버전 확인 · 비행기 모드 준비 상태 */
+  var updStatus = el("div",{style:"font-size:12.5px; color:var(--text-dim); margin-top:6px; line-height:1.6;"},[""]);
+  var offStatus = el("div",{style:"font-size:12.5px; color:var(--text-dim); line-height:1.6;"},["✈️ 비행기 모드 준비 확인 중…"]);
+  offlineReady().then(function(ok){
+    offStatus.textContent = ok ? "✈️ 비행기 모드에서도 열 수 있도록 이 휴대폰에 저장되어 있어요." : "✈️ 아직 오프라인 저장 전이에요. 인터넷이 될 때 앱을 한 번 열어 두면 저장됩니다.";
+  });
+  sheet.appendChild(el("div",{class:"theme-row", style:"flex-direction:column; align-items:stretch; gap:6px;"},[
+    el("div",{class:"row", style:"justify-content:space-between; gap:10px;"},[
+      el("div",{class:"label"},["🔄 새 버전 확인"]),
+      el("button",{class:"btn", onclick:function(){ manualUpdateCheck(updStatus); }},["지금 확인"])
+    ]),
+    offStatus, updStatus
   ]));
   var importInput = el("input",{type:"file", accept:"application/json", style:"display:none;"});
   var importWarning = el("div",{class:"error-box", style:"display:none; margin-bottom:12px; line-height:1.7;"},[
@@ -3244,6 +3262,7 @@ var LS_UPDATE_ATTEMPT = "bible_update_attempt_v1"; /* 업데이트 버튼을 눌
 
 function checkForUpdate(){
   if(_updateShown || !CURRENT_BUILD) return;
+  if(navigator.onLine === false) return;   /* 비행기 모드 등 인터넷이 없으면 확인하지 않음 */
   fetch(location.href, {cache:"no-store"}).then(function(res){
     if(!res.ok) return null;
     return res.text();
@@ -3291,6 +3310,36 @@ document.addEventListener("visibilitychange", function(){
   if(document.visibilityState === "visible") checkForUpdate();
 });
 setInterval(checkForUpdate, 15 * 60 * 1000);
+
+/* ---------- 오프라인(비행기 모드)에서도 열리게: 서비스 워커 등록 ----------
+   sw.js가 앱 화면과 글꼴을 휴대폰에 보관해 두었다가, 인터넷이 없으면 보관본으로 앱을 연다.
+   (성경 본문·오디오는 원래 휴대폰 안에 저장되어 있음) — sw.js는 index.html과 같은 곳(GitHub)에 올려야 한다. */
+var OFFLINE_CACHE = "bible-reading-offline-v1";
+if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){ /* sw.js가 없는 곳(예: 미리보기)에서는 그냥 넘어감 */ });
+  });
+}
+function offlineReady(){
+  if(!("caches" in window)) return Promise.resolve(false);
+  var appUrl = new URL("./", location.href.split("#")[0].split("?")[0]).href;
+  return caches.open(OFFLINE_CACHE).then(function(c){ return c.match(appUrl); }).then(function(r){ return !!r; }).catch(function(){ return false; });
+}
+/* ⋯ 설정의 "🔄 새 버전 확인" — 사용자가 원할 때 직접 확인 */
+function manualUpdateCheck(statusEl){
+  if(navigator.onLine === false){ statusEl.textContent = "지금은 인터넷이 연결되어 있지 않아요. 인터넷이 될 때 다시 눌러 주세요."; return; }
+  statusEl.textContent = "확인하는 중…";
+  fetch(location.href.split("#")[0], {cache:"no-store"}).then(function(res){ return res.ok ? res.text() : null; }).then(function(html){
+    var mm = html && /<meta name="app-build" content="([^"]*)">/.exec(html);
+    if(!mm){ statusEl.textContent = "확인하지 못했어요. 잠시 뒤 다시 눌러 주세요."; return; }
+    if(mm[1] !== CURRENT_BUILD){
+      _latestBuild = mm[1]; _updateShown = true; $updateBanner.style.display = "flex";
+      statusEl.textContent = "새 버전(" + mm[1] + ")이 있어요. 화면 위의 \"지금 업데이트\"를 눌러 주세요.";
+    } else {
+      statusEl.textContent = "최신 버전이에요 (" + CURRENT_BUILD + ")";
+    }
+  }).catch(function(){ statusEl.textContent = "인터넷 연결이 불안정해요. 잠시 뒤 다시 눌러 주세요."; });
+}
 
 /* ---------- 부트스트랩 ---------- */
 renderInappBanner();

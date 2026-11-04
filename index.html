@@ -194,6 +194,7 @@
   .theme-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; margin-bottom:12px;}
   .theme-row .label{font-size:13px; font-weight:600;}
   .theme-row .controls{display:flex; gap:6px;}
+  .theme-row .controls .btn{white-space:nowrap;}
   .theme-row .controls .btn.active{background:var(--accent); border-color:var(--accent); color:#000; font-weight:700;}
   .verse-copy-btn{flex:none; border:none; background:transparent; color:var(--mark-border); font-size:15px; padding:2px 4px; cursor:pointer; line-height:1;}
   .toast{position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(8px); z-index:40; background:var(--text); color:var(--bg); padding:9px 18px; border-radius:100px; font-size:12.5px; font-weight:600; box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease; max-width:80%; text-align:center;}
@@ -282,6 +283,38 @@
   .follow-btn.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
   /* 지금 오디오가 읽고 있는 절: 옅은 바탕 + 왼쪽 세로줄 */
   .verse-row.reading-now{background:rgba(127,127,127,.17); box-shadow:inset 3px 0 0 var(--accent); transition:background .25s ease;}
+  /* 📅 교회 통독표 */
+  .plan-card{border:1.5px solid var(--border); background:var(--surface); border-radius:14px; padding:12px 12px 10px; margin:0 0 12px; font-family:var(--font-ui);}
+  .plan-top{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .plan-top b{font-size:15px;}
+  .plan-date{font-size:12.5px; color:var(--text-dim); flex:1; min-width:0;}
+  .plan-all{border:0; background:none; color:var(--accent); font-weight:800; font-size:13px; cursor:pointer; padding:4px 2px;}
+  .plan-range{display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:20px; font-weight:800; margin:8px 0 6px; letter-spacing:-0.01em;}
+  .plan-cnt{font-size:13px; font-weight:700; color:var(--text-dim); white-space:nowrap;}
+  .plan-cnt.done{color:var(--read);}
+  .plan-chips{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:10px;}
+  .plan-bk{font-size:12.5px; color:var(--text-dim); font-weight:700; margin-right:-1px;}
+  .plan-ch{min-width:38px; height:34px; padding:0 6px; border-radius:9px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text); font-family:var(--font-ui); font-size:15px; font-weight:700; cursor:pointer;}
+  .plan-ch.done{background:var(--read); border-color:var(--read); color:var(--read-text);}
+  .plan-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .plan-actions .btn{flex:1 1 auto; padding:10px 12px; font-size:14px;}
+  .plan-actions .btn-primary{flex:2 1 auto;}
+  .plan-rest{font-size:15px; color:var(--text); margin:8px 0 8px; line-height:1.5;}
+  .plan-pending{display:block; width:100%; margin-top:8px; text-align:left; border:0; border-top:1px dashed var(--border); background:none; padding:9px 2px 2px; color:var(--text-dim); font-size:13px; font-weight:700; cursor:pointer;}
+  .plan-sum{font-size:13px; color:var(--text-dim); margin:-2px 2px 4px; font-weight:700;}
+  .plan-row{display:flex; align-items:center; gap:10px; padding:9px 6px; border-bottom:1px solid var(--border); cursor:pointer; font-family:var(--font-ui);}
+  .plan-row .pd{flex:none; width:64px; font-size:13px; color:var(--text-dim); font-variant-numeric:tabular-nums;}
+  .plan-row .pr{flex:1; min-width:0; font-size:15px; font-weight:600;}
+  .plan-row .pc{flex:none; min-width:42px; height:32px; border-radius:9px; border:1.5px solid var(--ctrl-border); background:var(--ctrl-bg); color:var(--text-dim); font-weight:800; font-size:13px; cursor:pointer;}
+  .plan-row.done .pc{background:var(--read); border-color:var(--read); color:var(--read-text);}
+  .plan-row.done .pr{color:var(--text-dim);}
+  .plan-row.today{background:var(--accent-soft); border-radius:8px;}
+  .plan-row.today .pd{color:var(--accent); font-weight:800;}
+  .plan-row.late .pr{color:var(--accent);}
+  .plan-end{margin:22px 0 0; padding:10px 12px; border:1.5px solid var(--border); border-radius:12px; display:flex; align-items:center; gap:10px; font-family:var(--font-ui); font-size:13.5px; color:var(--text-dim);}
+  .plan-end span{flex:1; min-width:0; line-height:1.45;}
+  .plan-end .btn{flex:none; font-size:13.5px; padding:8px 12px;}
+  .plan-end .btn.on{background:var(--read); border-color:var(--read); color:var(--read-text);}
   /* 📌 듣는 중에 표시한 구절 */
   .verse-row.pinned:not(.parallel) > .verse-num::before, .verse-row.pinned .par-col.left .verse-num::before{content:"📌"; font-size:.85em; margin-right:1px;}
   @keyframes pinflash{0%{background:rgba(255,196,0,.45);} 100%{background:transparent;}}
@@ -322,7 +355,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-11-04-1">
+<meta name="app-build" content="2026-11-04-2">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -487,7 +520,102 @@ function bookReadCount(bookNum, totalChapters){
   return c;
 }
 
-/* ---------- 통독 계획(1년, 날짜 기준) ---------- */
+/* ---------- 📅 교회 1년 통독표 ----------
+   교회에서 해마다 나오는 엑셀 통독표(주5일 / 주6일, 1년 1독)를 날짜별 읽을 범위로 바꿔 넣어 둔 것.
+   형식: "월일=시작책.장-끝책.장" (예: 1104=26.45-26.48 → 11월 4일 에스겔 45~48장), "!이름"은 쉬는 날(공휴일).
+   선택 사항이라 기본은 꺼져 있고, ⋯ 설정의 "📅 교회 통독표"에서 주5일·주6일을 고르면 첫 화면에 오늘 분량이 나온다.
+   새해 통독표가 나오면 아래에 그 해를 더하기만 하면 된다. */
+var READING_PLANS = {
+  2026: {
+    "5": "0102=1.1-1.6;0105=1.7-1.12;0106=1.13-1.18;0107=1.19-1.23;0108=1.24-1.26;0109=1.27-1.29;0112=1.30-1.32;0113=1.33-1.37;0114=1.38-1.41;0115=1.42-1.44;0116=1.45-1.50;0119=40.1-40.4;0120=40.5-40.8;0121=40.9-40.11;0122=40.12-40.15;0123=40.16-40.20;0126=40.21-40.23;0127=40.24-40.26;0128=40.27-40.28;0129=2.1-2.4;0130=2.5-2.8;0202=2.9-2.12;0203=2.13-2.16;0204=2.17-2.21;0205=2.22-2.26;0206=2.27-2.30;0209=2.31-2.34;0210=2.35-2.39;0211=2.40-3.5;0212=3.6-3.9;0213=3.10-3.13;0219=3.14-3.17;0220=3.18-3.21;0223=3.22-3.25;0224=3.26-4.1;0225=4.2-4.4;0226=4.5-4.7;0227=4.8-4.12;0301=!삼일절;0302=!대체공휴일;0303=4.13-4.15;0304=4.16-4.20;0305=4.21-4.23;0306=4.24-4.28;0309=4.29-4.32;0310=4.33-4.36;0311=41.1-41.2;0312=41.3-41.5;0313=41.6-41.9;0316=41.10-41.12;0317=41.13-41.15;0318=41.16;0319=5.1-5.3;0320=5.4-5.7;0323=5.8-5.11;0324=5.12-5.16;0325=5.17-5.22;0326=5.23-5.27;0327=5.28-5.30;0330=5.31-5.33;0331=5.34-6.5;0401=6.6-6.8;0402=6.9-6.12;0403=6.13-6.18;0406=6.19-6.22;0407=6.23-7.1;0408=7.2-7.5;0409=7.6-7.8;0410=7.9-7.11;0413=7.12-7.16;0414=7.17-7.19;0415=7.20-8.2;0416=8.3-9.3;0417=9.4-9.8;0420=9.9-9.13;0421=9.14-9.15;0422=9.16-9.18;0423=9.19-9.22;0424=9.23-9.26;0427=9.27-9.31;0428=10.1-10.4;0429=10.5-10.10;0430=10.11-10.13;0501=10.14-10.16;0504=10.17-10.19;0505=!어린이날;0506=10.20-10.24;0507=42.1-42.2;0508=42.3-42.6;0511=42.7-42.8;0512=42.9-42.11;0513=42.12-42.14;0514=42.15-42.18;0515=42.19-42.22;0518=42.23-42.24;0519=11.1-11.2;0520=11.3-11.5;0521=11.6-11.8;0522=11.9-11.11;0526=11.12-11.14;0527=11.15-11.18;0528=11.19-11.21;0529=11.22-12.2;0601=12.3-12.5;0602=12.6-12.8;0603=12.9-12.12;0604=12.13-12.16;0605=12.17-12.19;0608=12.20-12.23;0609=12.24-13.2;0610=13.3-13.6;0611=13.7-13.10;0612=13.11-13.15;0613=13.16-13.20;0615=13.21-13.25;0616=13.26-13.29;0617=14.1-14.6;0618=14.7-14.10;0619=14.11-14.17;0622=14.18-14.21;0623=14.22-14.25;0624=14.26-14.30;0625=14.31-14.34;0626=14.35-15.2;0629=15.3-15.7;0630=15.8-15.10;0701=43.1-43.2;0702=43.3-43.4;0703=43.5-43.7;0706=43.8-43.10;0707=43.11-43.13;0708=43.14-43.17;0709=43.18-43.21;0710=16.1-16.5;0713=16.6-16.9;0714=16.10-16.13;0715=17.1-17.6;0716=17.7-18.3;0717=18.4-18.10;0720=18.11-18.18;0721=18.19-18.26;0722=18.27-18.33;0723=18.34-18.39;0724=18.40-19.8;0727=19.9-19.19;0728=19.20-19.30;0729=19.31-19.38;0730=19.39-19.49;0731=19.50-19.59;0803=19.60-19.69;0804=19.70-19.77;0805=19.78-19.86;0806=19.87-19.95;0807=19.96-19.105;0810=19.106-19.113;0811=19.114-19.119;0812=19.120-19.135;0813=19.136-19.147;0814=19.148-20.6;0818=20.7-20.12;0819=20.13-20.18;0820=20.19-20.24;0821=20.25-20.30;0824=20.31-21.6;0825=21.7-22.1;0826=22.2-23.1;0827=23.2-23.7;0828=23.8-23.13;0831=23.14-23.21;0901=23.22-23.27;0902=23.28-23.32;0903=23.33-23.37;0904=23.38-23.42;0907=23.43-23.47;0908=23.48-23.53;0909=23.54-23.59;0910=23.60-23.63;0911=23.64-23.66;0914=44.1-44.4;0915=44.5-44.8;0916=44.9-44.12;0917=44.13-44.16;0918=44.17-44.19;0921=44.20-44.23;0922=44.24-44.26;0923=44.27-44.28;0928=24.1-24.3;0929=24.4-24.7;0930=24.8-24.11;1001=24.12-24.16;1002=24.17-24.21;1006=24.22-24.25;1007=24.26-24.29;1008=24.30-24.32;1012=24.33-24.36;1013=24.37-24.40;1014=24.41-24.45;1015=24.46-24.49;1016=24.50-24.51;1019=24.52-25.3;1020=25.4-26.4;1021=26.5-26.10;1022=26.11-26.15;1023=26.16-26.18;1026=26.19-26.22;1027=26.23-26.26;1028=26.27-26.30;1029=26.31-26.33;1030=26.34-26.38;1102=26.39-26.41;1103=26.42-26.44;1104=26.45-26.48;1105=45.1-45.4;1106=45.5-45.9;1109=45.10-45.13;1110=45.14-45.16;1111=27.1-27.2;1112=27.3-27.4;1113=27.5-27.8;1116=27.9-27.11;1117=27.12-28.8;1118=28.9-29.1;1119=29.2-30.4;1120=30.5-32.1;1123=32.2-33.5;1124=33.6-35.2;1125=35.3-37.2;1126=38.1-38.8;1127=38.9-38.14;1130=39.1-39.4;1201=46.1-46.4;1202=46.5-46.9;1203=46.10-46.14;1204=46.15-47.3;1207=47.4-47.10;1208=47.11-48.2;1209=48.3-49.2;1210=49.3-50.2;1211=50.3-51.3;1214=51.4-53.2;1215=53.3-55.1;1216=55.2-57.1;1217=58.1-58.7;1218=58.8-58.12;1221=58.13-59.5;1222=60.1-61.1;1223=61.2-62.4;1224=62.5-66.2;1228=66.3-66.9;1229=66.10-66.16;1230=66.17-66.22",
+    "6": "0102=1.1-1.4;0103=1.5-1.10;0105=1.11-1.15;0106=1.16-1.19;0107=1.20-1.23;0108=1.24-1.25;0109=1.26-1.28;0110=1.29-1.30;0112=1.31-1.34;0113=1.35-1.37;0114=1.38-1.40;0115=1.41-1.43;0116=1.44-1.46;0117=1.47-1.50;0119=40.1-40.4;0120=40.5-40.7;0121=40.8-40.10;0122=40.11-40.13;0123=40.14-40.16;0124=40.17-40.20;0126=40.21-40.22;0127=40.23-40.25;0128=40.26-40.28;0129=2.1-2.4;0130=2.5-2.7;0131=2.8-2.11;0202=2.12-2.14;0203=2.15-2.17;0204=2.18-2.21;0205=2.22-2.25;0206=2.26-2.28;0207=2.29-2.32;0209=2.33-2.35;0210=2.36-2.39;0211=2.40-3.4;0212=3.5-3.7;0213=3.8-3.11;0214=3.12-3.14;0219=3.15-3.17;0220=3.18-3.20;0221=3.21-3.24;0223=3.25-3.26;0224=3.27-4.2;0225=4.3-4.4;0226=4.5-4.7;0227=4.8-4.10;0228=4.11-4.14;0301=!삼일절;0302=!대체공휴일;0303=4.15-4.16;0304=4.17-4.20;0305=4.21-4.22;0306=4.23-4.26;0307=4.27-4.30;0309=4.31-4.32;0310=4.33-4.36;0311=41.1-41.2;0312=41.3-41.5;0313=41.6-41.8;0314=41.9-41.11;0316=41.12-41.13;0317=41.14-41.16;0318=5.1-5.3;0319=5.4-5.5;0320=5.6-5.9;0321=5.10-5.12;0323=5.13-5.16;0324=5.17-5.21;0325=5.22-5.25;0326=5.26-5.28;0327=5.29-5.30;0328=5.31-5.33;0330=5.34-6.4;0331=6.5-6.7;0401=6.8-6.10;0402=6.11-6.13;0403=6.14-6.18;0404=6.19-6.21;0406=6.22-6.24;0407=7.1-7.3;0408=7.4-7.6;0409=7.7-7.8;0410=7.9-7.11;0411=7.12-7.14;0413=7.15-7.18;0414=7.19-7.20;0415=7.21-8.2;0416=8.3-9.2;0417=9.3-9.6;0418=9.7-9.10;0420=9.11-9.13;0421=9.14-9.15;0422=9.16-9.18;0423=9.19-9.20;0424=9.21-9.24;0425=9.25-9.27;0427=9.28-9.31;0428=10.1-10.3;0429=10.4-10.7;0430=10.8-10.11;0501=10.12-10.14;0502=10.15-10.16;0504=10.17-10.19;0505=!어린이날;0506=10.20-10.21;0507=10.22-10.24;0508=42.1-42.2;0509=42.3-42.5;0511=42.6-42.7;0512=42.8-42.9;0513=42.10-42.12;0514=42.13-42.14;0515=42.15-42.18;0516=42.19-42.20;0518=42.21-42.24;0519=11.1-11.2;0520=11.3-11.5;0521=11.6-11.7;0522=11.8-11.10;0523=11.11-11.12;0526=11.13-11.15;0527=11.16-11.18;0528=11.19-11.20;0529=11.21-11.22;0530=12.1-12.3;0601=12.4-12.6;0602=12.7-12.8;0603=12.9-12.11;0604=12.12-12.14;0605=12.15-12.17;0606=12.18-12.20;0608=12.21-12.23;0609=12.24-13.1;0610=13.2-13.5;0611=13.6-13.7;0612=13.8-13.11;0613=13.12-13.15;0615=13.16-13.19;0616=13.20-13.23;0617=13.24-13.27;0618=13.28-14.2;0619=14.3-14.6;0620=14.7-14.9;0622=14.10-14.14;0623=14.15-14.18;0624=14.19-14.22;0625=14.23-14.25;0626=14.26-14.29;0627=14.30-14.32;0629=14.33-14.36;0630=43.1-43.4;0701=43.5-43.6;0702=43.7-43.9;0703=43.10-43.11;0704=43.12-43.14;0706=43.15-43.17;0707=43.18-43.21;0708=15.1-15.3;0709=15.4-15.7;0710=15.8-15.10;0711=16.1-16.4;0713=16.5-16.7;0714=16.8-16.10;0715=16.11-16.13;0716=17.1-17.5;0717=17.6-17.10;0718=18.1-18.6;0720=18.7-18.12;0721=18.13-18.18;0722=18.19-18.24;0723=18.25-18.30;0724=18.31-18.35;0725=18.36-18.40;0727=18.41-19.8;0728=19.9-19.18;0729=19.19-19.26;0730=19.27-19.34;0731=19.35-19.40;0801=19.41-19.49;0803=19.50-19.57;0804=19.58-19.67;0805=19.68-19.72;0806=19.73-19.78;0807=19.79-19.86;0808=19.87-19.93;0810=19.94-19.103;0811=19.104-19.106;0812=19.107-19.116;0813=19.117-19.119;0814=19.120-19.132;0815=19.133-19.142;0818=19.143-20.1;0819=20.2-20.7;0820=20.8-20.12;0821=20.13-20.17;0822=20.18-20.22;0824=20.23-20.27;0825=20.28-21.1;0826=21.2-21.6;0827=21.7-21.11;0828=21.12-22.7;0829=22.8-23.4;0831=23.5-23.9;0901=23.10-23.13;0902=23.14-23.20;0903=23.21-23.25;0904=23.26-23.29;0905=23.30-23.34;0907=23.35-23.37;0908=23.38-23.42;0909=23.43-23.45;0910=23.46-23.49;0911=23.50-23.54;0912=23.55-23.59;0914=23.60-23.64;0915=23.65-24.2;0916=24.3-24.4;0917=24.5-24.7;0918=24.8-24.11;0919=24.12-24.15;0921=24.16-24.18;0922=24.19-24.22;0923=24.23-24.25;0926=24.26-24.29;0928=24.30-24.31;0929=24.32-24.34;0930=24.35-24.37;1001=24.38-24.41;1002=24.42-24.45;1003=24.46-24.49;1006=24.50;1007=24.51-25.1;1008=25.2-25.4;1010=25.5-26.4;1012=26.5-26.9;1013=26.10-26.13;1014=26.14-26.16;1015=26.17-26.19;1016=26.20-26.22;1017=26.23-26.25;1019=26.26-26.28;1020=26.29-26.32;1021=26.33-26.35;1022=26.36-26.38;1023=26.39-26.40;1024=26.41-26.44;1026=26.45-26.47;1027=26.48-27.2;1028=27.3-27.4;1029=27.5-27.7;1030=27.8-27.10;1031=27.11-28.2;1102=28.3-28.9;1103=28.10-29.1;1104=29.2-30.3;1105=30.4-30.8;1106=30.9-33.1;1107=33.2-33.7;1109=34.1-35.2;1110=35.3-37.1;1111=37.2-38.5;1112=38.6-38.11;1113=38.12-39.4;1114=44.1-44.2;1116=44.3-44.6;1117=44.7-44.9;1118=44.10-44.12;1119=44.13-44.15;1120=44.16-44.18;1121=44.19-44.21;1123=44.22-44.24;1124=44.25-44.27;1125=44.28-45.3;1126=45.4-45.7;1127=45.8-45.11;1128=45.12-45.15;1130=45.16-46.4;1201=46.5-46.8;1202=46.9-46.12;1203=46.13-46.15;1204=46.16-47.4;1205=47.5-47.10;1207=47.11-48.1;1208=48.2-48.5;1209=48.6-49.4;1210=49.5-50.3;1211=50.4-51.3;1212=51.4-53.1;1214=53.2-54.4;1215=54.5-55.4;1216=56.1-58.2;1217=58.3-58.7;1218=58.8-58.11;1219=58.12-59.2;1221=59.3-60.2;1222=60.3-61.2;1223=61.3-62.4;1224=62.5-66.1;1226=66.2-66.6;1228=66.7-66.12;1229=66.13-66.18;1230=66.19-66.22"
+  }
+};
+var LS_PLAN = "bible_plan_v1";          /* {type:"off"|"5"|"6", since:"켠 날"} — since 이전의 안 읽은 날은 '밀린 분량'으로 치지 않음 */
+var LS_PLANSTOP = "bible_planstop_v1";  /* true면 오늘 분량의 마지막 장을 다 들으면 오디오를 멈춤 */
+var PLAN_LABEL = {"5":"주5일", "6":"주6일"};
+window.__planDebug = { plans: READING_PLANS, clearCache: function(){ _planCache = {}; } };   /* 테스트·점검용 */
+function getPlan(){ var p = lsGet(LS_PLAN, null); return (p && (p.type === "5" || p.type === "6")) ? p : {type:"off"}; }
+function setPlanType(type){
+  var cur = getPlan();
+  if(type !== "5" && type !== "6"){ lsSet(LS_PLAN, {type:"off"}); return; }
+  lsSet(LS_PLAN, {type:type, since: cur.type !== "off" && cur.since ? cur.since : planToday()});
+}
+function planToday(){ return window.__planToday || todayStr(); }
+var _planCache = {};
+function planDays(year, type){
+  var key = year + "|" + type;
+  if(_planCache[key]) return _planCache[key];
+  var src = READING_PLANS[year] && READING_PLANS[year][type];
+  if(!src) return null;
+  var out = src.split(";").map(function(s){
+    var md = s.slice(0,4), body = s.slice(5);
+    var d = {date: year + "-" + md.slice(0,2) + "-" + md.slice(2), label:null, chapters:[]};
+    if(body.charAt(0) === "!"){ d.label = body.slice(1); return d; }
+    var ends = body.split("-").map(function(x){ var q = x.split("."); return [Number(q[0]), Number(q[1])]; });
+    var z = ends[1] || ends[0], b = ends[0][0], c = ends[0][1];
+    for(var guard=0; guard<400; guard++){
+      d.chapters.push([b, c]);
+      if(b === z[0] && c === z[1]) break;
+      c++; if(c > STD_CHAPTER_COUNTS[b-1]){ b++; c = 1; }
+      if(b > 66) break;
+    }
+    return d;
+  });
+  _planCache[key] = out;
+  return out;
+}
+function planReadCount(d){ var n = 0; d.chapters.forEach(function(x){ if(isRead(x[0], x[1])) n++; }); return n; }
+function planDayDone(d){ return d.chapters.length > 0 && planReadCount(d) === d.chapters.length; }
+function planFirstUnread(d){ for(var i=0;i<d.chapters.length;i++){ if(!isRead(d.chapters[i][0], d.chapters[i][1])) return d.chapters[i]; } return d.chapters[0]; }
+function planRangeLabel(d){
+  var a = d.chapters[0], z = d.chapters[d.chapters.length-1];
+  var A = bookByNum(a[0]).ko, Z = bookByNum(z[0]).ko;
+  if(a[0] === z[0]) return A + " " + a[1] + (a[1] !== z[1] ? "~" + z[1] : "") + "장";
+  return A + " " + a[1] + "장 ~ " + Z + " " + z[1] + "장";
+}
+function planDateLabel(ds, withYear){
+  var q = ds.split("-"), d = new Date(+q[0], +q[1]-1, +q[2]);
+  return (withYear ? q[0] + "년 " : "") + (+q[1]) + "월 " + (+q[2]) + "일 (" + "일월화수목금토".charAt(d.getDay()) + ")";
+}
+/* 오늘 기준 통독 상황: 오늘 분량, 다음 분량, 켠 날 이후 밀린 날들 */
+function planInfo(){
+  var plan = getPlan();
+  if(plan.type === "off") return null;
+  var today = planToday(), year = Number(today.slice(0,4));
+  var days = planDays(year, plan.type);
+  if(!days) return {plan:plan, year:year, today:today, missing:true};
+  var info = {plan:plan, year:year, today:today, days:days, todayDay:null, next:null, pending:[]};
+  days.forEach(function(d){
+    if(d.date === today) info.todayDay = d;
+    if(!d.chapters.length) return;
+    if(d.date > today && !info.next) info.next = d;
+    if(d.date < today && d.date >= (plan.since || today) && !planDayDone(d)) info.pending.push(d);
+  });
+  return info;
+}
+/* 이 장이 들어 있는 통독 날(올해 통독표 기준) */
+function planDayOf(book, chapter){
+  var plan = getPlan(); if(plan.type === "off") return null;
+  var days = planDays(Number(planToday().slice(0,4)), plan.type); if(!days) return null;
+  for(var i=0;i<days.length;i++){
+    var ch = days[i].chapters;
+    for(var j=0;j<ch.length;j++){ if(ch[j][0] === book && ch[j][1] === chapter) return days[i]; }
+  }
+  return null;
+}
+/* 오늘 분량 끝나면 오디오 멈춤: 이 장이 어느 날 분량의 마지막 장이면 true */
+function planStopHere(book, chapter){
+  if(!lsGet(LS_PLANSTOP, false)) return false;
+  var d = planDayOf(book, chapter); if(!d) return false;
+  var last = d.chapters[d.chapters.length-1];
+  return last[0] === book && last[1] === chapter;
+}
+/* 장을 읽음으로 표시했을 때 그날 분량을 다 마쳤으면 축하 */
+function planCheckDone(book, chapter){
+  var d = planDayOf(book, chapter);
+  if(d && planDayDone(d)) setTimeout(function(){ showToast("🎉 " + planDateLabel(d.date) + " 통독(" + planRangeLabel(d) + ")을 다 읽었어요"); }, 50);
+}
 /* ---------- 하이라이트(묵상 구절 표시) ---------- */
 /* 버전에 상관없이(개역개정/새번역 등 어느 걸 읽든) 같은 절이면 같은 표시로 남도록
    isRead와 같은 방식으로 책+장+절만으로 키를 만든다. 절 본문(text)은 나중에 모아보기 화면과
@@ -1823,6 +1951,120 @@ function categoryIndexForBook(n){
 /* 첫 화면(책 목록) 보기 방식: "category"(분류별, 기본) / "simple"(구약·신약 탭 + 간단 목록)
    — 성경의 분류(모세오경·역사서…)에 익숙하지 않은 분들은 간단 목록이 더 편하다고 해서 고를 수 있게 함 */
 var LS_LISTMODE = "bible_listmode_v1", LS_LISTTAB = "bible_listtab_v1";
+/* ---------- 📅 첫 화면의 "오늘의 통독" 카드 (통독표를 켠 경우만) ---------- */
+function planChips(d){
+  var box = el("div",{class:"plan-chips"}), lastBook = 0;
+  d.chapters.forEach(function(x){
+    if(x[0] !== lastBook){ lastBook = x[0]; box.appendChild(el("span",{class:"plan-bk"},[bookByNum(x[0]).ko])); }
+    box.appendChild(el("button",{class:"plan-ch" + (isRead(x[0], x[1]) ? " done" : ""), onclick:function(e){ e.stopPropagation(); goReading(x[0], x[1]); }},[String(x[1])]));
+  });
+  return box;
+}
+function planGo(d){ var c = planFirstUnread(d); goReading(c[0], c[1]); }
+function planMarkDay(d, val){ d.chapters.forEach(function(x){ markRead(x[0], x[1], val); }); }
+function renderPlanCard(){
+  var info = planInfo();
+  if(!info) return null;
+  var card = el("div",{class:"plan-card"});
+  card.appendChild(el("div",{class:"plan-top"},[
+    el("b",{},["📅 오늘의 통독"]),
+    el("span",{class:"plan-date"},[planDateLabel(info.today) + " · " + PLAN_LABEL[info.plan.type]]),
+    el("button",{class:"plan-all", onclick:function(){ openPlanModal(); }},["통독표 ›"])
+  ]));
+  if(info.missing){
+    card.appendChild(el("div",{class:"plan-rest"},[info.year + "년 통독표가 아직 앱에 없어요. 새 버전이 나오면 자동으로 들어옵니다."]));
+    return card;
+  }
+  var d = info.todayDay;
+  if(d && d.chapters.length){
+    var n = planReadCount(d), done = n === d.chapters.length;
+    card.appendChild(el("div",{class:"plan-range"},[planRangeLabel(d), el("span",{class:"plan-cnt" + (done ? " done" : "")},[done ? "✓ 다 읽음" : n + " / " + d.chapters.length + "장"])]));
+    card.appendChild(planChips(d));
+    var acts = el("div",{class:"plan-actions"});
+    if(!done){
+      var fu = planFirstUnread(d);
+      acts.appendChild(el("button",{class:"btn btn-primary", onclick:function(){ planGo(d); }},["▶ " + (n ? "이어서 읽기 (" : "읽기 시작 (") + bookByNum(fu[0]).ko + " " + fu[1] + "장)"]));
+      acts.appendChild(el("button",{class:"btn", onclick:function(){ planMarkDay(d, true); showToast("🎉 오늘 통독을 다 읽었어요"); render(); }},["✓ 다 읽음"]));
+    } else if(info.next){
+      acts.appendChild(el("button",{class:"btn", onclick:function(){ planGo(info.next); }},["다음 분량 미리 읽기: " + planDateLabel(info.next.date) + " " + planRangeLabel(info.next)]));
+    }
+    card.appendChild(acts);
+  } else {
+    var why = d && d.label ? d.label : ("일월화수목금토".charAt(new Date(+info.today.slice(0,4), +info.today.slice(5,7)-1, +info.today.slice(8,10)).getDay()) + "요일");
+    card.appendChild(el("div",{class:"plan-rest"},["오늘(" + why + ")은 통독 쉬는 날이에요 🌿"]));
+    if(info.next) card.appendChild(el("div",{class:"plan-actions"},[
+      el("button",{class:"btn", onclick:function(){ planGo(info.next); }},["다음: " + planDateLabel(info.next.date) + " " + planRangeLabel(info.next) + " ›"])
+    ]));
+  }
+  if(info.pending.length){
+    var f = info.pending[0];
+    card.appendChild(el("button",{class:"plan-pending", onclick:function(){ openPlanModal(f.date); }},[
+      "⏳ 밀린 분량 " + info.pending.length + "일 · " + planDateLabel(f.date) + " " + planRangeLabel(f) + " ›"
+    ]));
+  }
+  return card;
+}
+/* ---------- 📅 통독표 전체 보기 ---------- */
+function openPlanModal(focusDate){
+  var changed = false;
+  function closeAndSync(){ backdrop.remove(); if(changed || state.screen === "letters") render(); }
+  var backdrop = el("div",{class:"modal-backdrop", onclick:function(e){ if(e.target === backdrop) closeAndSync(); }});
+  var sheet = el("div",{class:"modal-sheet"});
+  backdrop.appendChild(sheet);
+  function draw(){
+    clear(sheet);
+    var plan = getPlan(), today = planToday(), year = Number(today.slice(0,4));
+    sheet.appendChild(el("h3",{},["📅 " + year + "년 교회 통독표"]));
+    var seg = el("div",{class:"theme-row"},[ el("div",{class:"label"},["읽는 방식"]), el("div",{class:"controls"},
+      [["5","주5일"],["6","주6일"],["off","끄기"]].map(function(o){
+        return el("button",{class:"btn" + (plan.type === o[0] ? " active" : ""), onclick:function(){ setPlanType(o[0]); changed = true; draw(); }},[o[1]]);
+      })) ]);
+    sheet.appendChild(seg);
+    if(plan.type === "off"){
+      sheet.appendChild(el("div",{class:"empty-hint", style:"line-height:1.7;"},["교회 통독표를 따라 읽으시면 주5일 또는 주6일을 고르세요. 첫 화면에 오늘 읽을 분량이 나오고, 읽은 날이 표시됩니다."]));
+    } else {
+      var stopOn = !!lsGet(LS_PLANSTOP, false);
+      sheet.appendChild(el("div",{class:"theme-row", style:"flex-wrap:wrap;"},[
+        el("div",{class:"label"},["🎧 오늘 분량을 다 들으면"]),
+        el("div",{class:"controls"},[
+          el("button",{class:"btn" + (stopOn ? " active" : ""), onclick:function(){ lsSet(LS_PLANSTOP, true); draw(); }},["오디오 멈춤"]),
+          el("button",{class:"btn" + (!stopOn ? " active" : ""), onclick:function(){ lsSet(LS_PLANSTOP, false); draw(); }},["계속 듣기"])
+        ])
+      ]));
+      var days = planDays(year, plan.type);
+      if(!days){
+        sheet.appendChild(el("div",{class:"empty-hint"},[year + "년 통독표가 아직 앱에 없어요."]));
+      } else {
+        var total = 0, doneN = 0;
+        days.forEach(function(d){ if(d.chapters.length){ total++; if(planDayDone(d)) doneN++; } });
+        sheet.appendChild(el("div",{class:"plan-sum"},["전체 " + total + "일 중 " + doneN + "일 읽음 · " + Math.round(doneN / total * 100) + "%"]));
+        var list = el("div",{class:"plan-list"}), lastMonth = "", focusEl = null;
+        days.forEach(function(d){
+          if(!d.chapters.length) return;
+          var m = d.date.slice(5,7);
+          if(m !== lastMonth){ lastMonth = m; list.appendChild(el("div",{class:"pin-day"},[Number(m) + "월"])); }
+          var n = planReadCount(d), done = n === d.chapters.length;
+          var late = !done && d.date < today && d.date >= (plan.since || today);
+          var row = el("div",{class:"plan-row" + (d.date === today ? " today" : "") + (done ? " done" : "") + (late ? " late" : ""), onclick:function(){ backdrop.remove(); planGo(d); }},[
+            el("span",{class:"pd"},[planDateLabel(d.date).replace(/^(\d+)월 /, "$1/").replace("일 ", " ")]),
+            el("span",{class:"pr"},[(late ? "⏳ " : "") + planRangeLabel(d)]),
+            el("button",{class:"pc", title: done ? "읽음 취소" : "다 읽음으로 표시", onclick:function(e){
+              e.stopPropagation(); planMarkDay(d, !done); changed = true; var y = sheet.scrollTop; draw(); sheet.scrollTop = y;
+            }},[done ? "✓" : (n ? n + "/" + d.chapters.length : "○")])
+          ]);
+          if(d.date === (focusDate || today) || (!focusEl && d.date > (focusDate || today))) focusEl = focusEl || row;
+          list.appendChild(row);
+        });
+        sheet.appendChild(list);
+        if(focusEl && !draw._done){ draw._done = true; setTimeout(function(){ focusEl.scrollIntoView({block:"center"}); }, 30); }
+      }
+    }
+    sheet.appendChild(el("button",{class:"btn btn-ghost", style:"margin-top:8px; width:100%;", onclick:closeAndSync},["닫기"]));
+  }
+  draw();
+  document.body.appendChild(backdrop);
+}
+
 function getListMode(){ return lsGet(LS_LISTMODE, "category") === "simple" ? "simple" : "category"; }
 function listModeSwitch(){
   var mode = getListMode();
@@ -1834,6 +2076,7 @@ function listModeSwitch(){
 function renderLettersSimple(){
   var wrap = el("div",{});
   wrap.appendChild(listModeSwitch());
+  var planCard = renderPlanCard(); if(planCard) wrap.appendChild(planCard);
   var tab = lsGet(LS_LISTTAB, "OT") === "NT" ? "NT" : "OT";
   var tabs = el("div",{class:"ot-nt-tabs"});
   var list = el("div",{class:"simple-list"});
@@ -1902,6 +2145,7 @@ function renderLetters(){
   jumpBar.appendChild(buildJumpRow("구약"));
   jumpBar.appendChild(buildJumpRow("신약"));
   wrap.appendChild(listModeSwitch());
+  var planCard = renderPlanCard(); if(planCard) wrap.appendChild(planCard);
   wrap.appendChild(jumpBar);
   /* 헤더(상단 타이틀줄) 바로 밑에 자리를 잡도록, sticky 위치를 헤더 높이만큼 내려준다.
      (둘 다 top:0으로 두면 스크롤시 서로 겹쳐버린다) */
@@ -2113,7 +2357,10 @@ function renderReading(){
         cb.checked = isRead(state.book, state.chapter);
         cb.addEventListener("change", function(){
           markRead(state.book, state.chapter, cb.checked);
+          if(state._planEndSync) state._planEndSync();
+          if(cb.checked) planCheckDone(state.book, state.chapter);
         });
+        state._readCb = cb; state._planEndSync = null;
         return cb;
       })(),
       "읽음으로 표시"
@@ -2398,6 +2645,28 @@ function renderReading(){
     });
     /* 장 끝: 이전/다음 장 버튼. 예전처럼 화면 아래에 항상 붙어 있지 않고 본문 맨 끝에만 있어서,
        읽는 동안에는 본문 창이 그만큼 넓어진다. 좌우 밀기를 모르는 분도 여기서 넘길 수 있다. */
+    /* 📅 통독표를 켠 경우: 장 끝에서 바로 "읽음" 표시(그날 분량 중 몇 번째 장인지 함께) */
+    var pd = planDayOf(state.book, state.chapter);
+    if(pd){
+      var pBook = state.book, pCh = state.chapter, pIdx = 0;
+      pd.chapters.forEach(function(x, i){ if(x[0] === pBook && x[1] === pCh) pIdx = i; });
+      var pTxt = el("span",{},[""]), pBtn = el("button",{class:"btn"},[""]);
+      var syncEnd = function(){
+        var r = isRead(pBook, pCh);
+        pTxt.textContent = "📅 " + planDateLabel(pd.date) + " 통독: " + planRangeLabel(pd) + " (" + pd.chapters.length + "장 중 " + (pIdx + 1) + "번째 · " + planReadCount(pd) + "장 읽음)";
+        pBtn.textContent = r ? "✓ 읽음" : "읽음으로 표시";
+        pBtn.classList.toggle("on", r);
+      };
+      pBtn.addEventListener("click", function(){
+        var now = !isRead(pBook, pCh);
+        markRead(pBook, pCh, now);
+        if(state._readCb) state._readCb.checked = now;
+        syncEnd();
+        if(now) planCheckDone(pBook, pCh);
+      });
+      syncEnd(); state._planEndSync = syncEnd;
+      verseWrap.appendChild(el("div",{class:"plan-end"},[pTxt, pBtn]));
+    }
     verseWrap.appendChild(el("div",{class:"chapter-end-nav"},[
       el("button",{class:"btn", onclick:function(){ swipeToChapter(-1); }},["‹ 이전 장"]),
       el("button",{class:"btn btn-primary", onclick:function(){ swipeToChapter(1); }},["다음 장 ›"])
@@ -2503,6 +2772,12 @@ function getPlayerEl(){
   });
   a.addEventListener("loadedmetadata", function(){ a.playbackRate = state.audioRate || 1; });
   a.addEventListener("ended", function(){
+    /* 📅 "오늘 분량 끝나면 오디오 멈춤"을 켰고, 방금 끝난 장이 그날 분량의 마지막 장이면 여기서 멈춘다 */
+    if(planStopHere(player.book, player.chapter)){
+      var pdd = planDayOf(player.book, player.chapter);
+      showToast("📅 " + planDateLabel(pdd.date) + " 통독 분량을 다 들었어요");
+      return;
+    }
     /* 미리 받아 둔 다음 장이 있으면 기다림 없이 즉시 바꿔 끼워 재생(화면 꺼짐 상태에서 가장 확실) */
     var n = player.next;
     if(n && n.fromBook === player.book && n.fromChapter === player.chapter && n.file){
@@ -2937,7 +3212,10 @@ function ttsUpdateUI(){
 function ttsSpeakCurrent(){
   var gen = ++tts.gen;
   if(!tts.on) return;
-  if(tts.idx >= tts.verses.length){ ttsNextChapter(); return; }
+  if(tts.idx >= tts.verses.length){
+    if(planStopHere(tts.book, tts.chapter)){ ttsPause(); tts.idx = 0; showToast("📅 오늘 통독 분량을 다 들었어요"); return; }
+    ttsNextChapter(); return;
+  }
   var v = tts.verses[tts.idx];
   var text = ttsCleanText(v.text);
   if(!text.trim()){ tts.idx++; ttsSpeakCurrent(); return; }
@@ -3381,6 +3659,14 @@ var MANUAL_SECTIONS = [
     "음성으로 읽는 동안에는 화면이 꺼지지 않게 해 둡니다(휴대폰에 따라 화면이 꺼지면 음성이 멈출 수 있어서). 화면을 끄고 듣고 싶으면 MP3 오디오를 추가하세요.",
     "목소리는 휴대폰에 들어 있는 음성을 씁니다. 삼성폰은 설정 → 일반 → 텍스트 음성 변환에서 바꿀 수 있어요."
   ]},
+  {title:"📅 교회 1년 통독표 따라 읽기 (선택)", items:[
+    "교회 통독표대로 읽으시면 **⋯** → **📅 교회 통독표**에서 **주5일** 또는 **주6일**을 고르세요. (자기 계획대로 읽으시는 분은 **끄기** 그대로 두시면 됩니다)",
+    "첫 화면 맨 위에 **📅 오늘의 통독** 카드가 나옵니다. 오늘 읽을 범위와 장 번호가 보이고, **▶ 읽기 시작**을 누르면 그 장이 열립니다. 읽은 장은 색이 바뀝니다.",
+    "장을 다 읽으면 본문 맨 아래 **읽음으로 표시**를 누르세요(위쪽 체크와 같음). 그날 분량을 다 읽으면 🎉 알림이 나옵니다. 카드의 **✓ 다 읽음**으로 한 번에 표시할 수도 있어요.",
+    "토·일·공휴일처럼 쉬는 날에는 다음 분량이 안내되고, 통독표를 켠 뒤 못 읽은 날이 있으면 **⏳ 밀린 분량**으로 알려 줍니다.",
+    "카드의 **통독표 ›**를 누르면 1년 전체 일정과 읽은 날(✓)이 보입니다. 날짜를 누르면 그날 분량으로 가고, 오른쪽 단추로 그날을 읽음/취소할 수 있어요.",
+    "오디오로 들으실 때 그날 분량에서 멈추고 싶으면 통독표 화면의 **🎧 오늘 분량을 다 들으면**을 **오디오 멈춤**으로 바꾸세요(기본은 계속 듣기)."
+  ]},
   {title:"📌 듣는 중에 구절 표시하기 (멈추지 않고)", items:[
     "오디오나 음성으로 들으며 읽다가 **다시 묵상하거나 암송하고 싶은 말씀**이 나오면, 멈추지 않고 표시해 두었다가 그날 읽기를 마친 뒤 모아서 볼 수 있어요.",
     "**본문을 두 번 톡톡** 치면 → 그 절에 📌가 붙습니다. (듣는 중에만 동작. 한 번 탭은 예전처럼 넓게 보기, 표시된 절을 다시 두 번 톡톡 치면 표시가 지워져요)",
@@ -3532,6 +3818,21 @@ function openSettingsModal(){
   sheet.appendChild(el("div",{class:"theme-row"},[
     el("div",{class:"label"},["📚 첫 화면"]),
     el("div",{class:"controls"},[ lmBtn("category","분류별"), lmBtn("simple","구약·신약 목록") ])
+  ]));
+  /* 교회 1년 통독표 (선택) */
+  var planBtns = {};
+  function planBtn(key, label){
+    var b = el("button",{class:"btn" + (getPlan().type === key ? " active" : ""), onclick:function(){
+      setPlanType(key);
+      Object.keys(planBtns).forEach(function(k){ planBtns[k].classList.toggle("active", k === key); });
+      if(state.screen === "letters") render();
+      showToast(key === "off" ? "통독표를 껐어요" : "📅 " + PLAN_LABEL[key] + " 통독표 — 첫 화면에 오늘 분량이 나와요");
+    }},[label]);
+    planBtns[key] = b; return b;
+  }
+  sheet.appendChild(el("div",{class:"theme-row", style:"flex-wrap:wrap;"},[
+    el("div",{class:"label"},["📅 교회 통독표"]),
+    el("div",{class:"controls"},[ planBtn("off","끄기"), planBtn("5","주5일"), planBtn("6","주6일") ])
   ]));
   /* 이어폰·잠금화면의 ⏭(다음) 버튼이 할 일 */
   var earBtns = {};

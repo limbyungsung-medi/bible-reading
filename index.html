@@ -282,6 +282,17 @@
   .follow-btn.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
   /* 지금 오디오가 읽고 있는 절: 옅은 바탕 + 왼쪽 세로줄 */
   .verse-row.reading-now{background:rgba(127,127,127,.17); box-shadow:inset 3px 0 0 var(--accent); transition:background .25s ease;}
+  /* 📌 듣는 중에 표시한 구절 */
+  .verse-row.pinned:not(.parallel) > .verse-num::before, .verse-row.pinned .par-col.left .verse-num::before{content:"📌"; font-size:.85em; margin-right:1px;}
+  @keyframes pinflash{0%{background:rgba(255,196,0,.45);} 100%{background:transparent;}}
+  .verse-row.pin-flash{animation:pinflash 1.1s ease-out;}
+  .pin-chip{font-size:12.5px; padding:5px 10px; border-radius:100px; border:1.5px solid var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:800; cursor:pointer; white-space:nowrap;}
+  .audio-bar .follow-btn{min-width:46px;}
+  .pin-btn .ic{font-size:16px;}
+  .pin-btn.bump{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+  .pin-day{font-family:var(--font-ui); font-size:13px; font-weight:800; color:var(--text-dim); margin:14px 2px 6px;}
+  .pin-item .actions{flex-wrap:wrap;}
+  .pin-item .hl-on{background:var(--mark-bg); color:#fff; border-color:var(--mark-bg);}
   .chapter-nav{position:fixed; left:0; right:0; bottom:0; z-index:5; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; display:flex; gap:8px; max-width:720px; margin:0 auto;}
   .chapter-nav .btn{flex:1;}
   .empty-hint{color:var(--text-dim); font-size:13px; text-align:center; padding:30px 10px;}
@@ -311,7 +322,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-11-02-1">
+<meta name="app-build" content="2026-11-04-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -501,6 +512,47 @@ function setHighlightNote(bookNum, chapter, verse, note){
   lsSet(LS_HIGHLIGHTS, highlightMap);
   return true;
 }
+/* ---------- 📌 듣는 중에 표시한 구절 ----------
+   오디오(또는 음성 읽기)를 멈추지 않고 "이 말씀 다시 보고 싶다"는 구절을 콕 찍어 두었다가,
+   그날 읽기를 마친 뒤 📌 목록에서 하이라이트·암송·복사로 정리한다.
+   찍는 방법: ① 듣는 중 본문을 두 번 톡톡 → 그 절  ② 오디오 줄의 📌 단추 → 지금 들리는 절
+   ③ (설정 시) 블루투스 이어폰·잠금화면의 ⏭ 다음 버튼 → 지금 들리는 절 */
+var LS_PINS = "bible_pins_v1";
+var LS_EARBTN = "bible_earbtn_v1";   /* 이어폰·잠금화면 ⏭ 버튼: "next"(다음 장, 기본) / "pin"(📌 표시) */
+var pinMap = lsGet(LS_PINS, {});
+function getEarBtn(){ return lsGet(LS_EARBTN, "next") === "pin" ? "pin" : "next"; }
+function isPinned(bookNum, chapter, verse){ return !!pinMap[highlightKey(bookNum,chapter,verse)]; }
+function pinCount(){ return Object.keys(pinMap).length; }
+function addPin(p){
+  var k = highlightKey(p.book, p.chapter, p.verse);
+  if(pinMap[k]) return false;
+  pinMap[k] = {book:p.book, chapter:p.chapter, verse:p.verse, text:p.text || "", version:p.version || state.version, ts:Date.now()};
+  lsSet(LS_PINS, pinMap);
+  return true;
+}
+function removePin(bookNum, chapter, verse){
+  var k = highlightKey(bookNum, chapter, verse);
+  if(!pinMap[k]) return false;
+  delete pinMap[k]; lsSet(LS_PINS, pinMap);
+  return true;
+}
+/* 표시한 날짜(최근 날짜 먼저)로 묶고, 같은 날 안에서는 성경 순서대로 */
+function allPins(){
+  return Object.keys(pinMap).map(function(k){ return pinMap[k]; }).sort(function(a,b){
+    var da = pinDayKey(a.ts), db = pinDayKey(b.ts);
+    if(da !== db) return da < db ? 1 : -1;
+    if(a.book !== b.book) return a.book - b.book;
+    if(a.chapter !== b.chapter) return a.chapter - b.chapter;
+    return a.verse - b.verse;
+  });
+}
+function pinDayKey(ts){ var d = new Date(ts || 0); return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()); }
+function pinDayLabel(ts){
+  var d = new Date(ts || 0), today = pinDayKey(Date.now()), yest = pinDayKey(Date.now() - 864e5), k = pinDayKey(ts);
+  var s = (d.getMonth()+1) + "월 " + d.getDate() + "일 (" + "일월화수목금토".charAt(d.getDay()) + ")";
+  return k === today ? "오늘 · " + s : (k === yest ? "어제 · " + s : s);
+}
+
 /* 복사할 때 구절 본문 뒤에 메모가 있으면 같이 붙여준다 */
 function formatHighlightForCopy(h){
   var s = refLabel(h.book, h.chapter, h.verse) + " " + h.text;
@@ -1987,8 +2039,15 @@ function renderVerses(){
 }
 
 /* 마지막으로 화면이 스크롤된 시각 — 본문 탭과 스크롤을 구분하는 데 쓴다 */
-var _lastScrollAt = 0;
+var _lastScrollAt = 0, _lastTouchMoveAt = 0;
 window.addEventListener("scroll", function(){ _lastScrollAt = Date.now(); }, {passive:true});
+/* 손가락으로 실제로 끌어 움직인(10px 넘게) 때만 기록 — 탭할 때의 작은 떨림은 빼고 */
+var _touchY0 = null;
+window.addEventListener("touchstart", function(e){ _touchY0 = e.touches && e.touches[0] ? {x:e.touches[0].clientX, y:e.touches[0].clientY} : null; }, {passive:true});
+window.addEventListener("touchmove", function(e){
+  var t = e.touches && e.touches[0];
+  if(!t || !_touchY0 || Math.abs(t.clientY - _touchY0.y) > 10 || Math.abs(t.clientX - _touchY0.x) > 10) _lastTouchMoveAt = Date.now();
+}, {passive:true});
 
 function renderReading(){
   var book = bookByNum(state.book);
@@ -2042,6 +2101,12 @@ function renderReading(){
       lsSet(LS_PARALLEL, {on:!parOn, version:parVersion});
       render();
     }},[parOn ? "⇆ 대조 끄기" : "⇆ 대조"]),
+    (function(){
+      var chip = el("button",{class:"pin-chip", title:"듣는 중에 📌 표시한 구절 다시 보기", onclick:function(){ openPinsModal(); }},[""]);
+      state._pinChipEl = chip;
+      updatePinChip();
+      return chip;
+    })(),
     el("label",{class:"row", style:"font-size:12.5px; color:var(--text-dim); gap:6px; cursor:pointer;"},[
       (function(){
         var cb = el("input",{type:"checkbox"});
@@ -2235,7 +2300,7 @@ function renderReading(){
     verses.forEach(function(v){
       var isTarget = state.targetVerses ? state.targetVerses.indexOf(v.v) >= 0 : (state.targetVerse && v.v === state.targetVerse);
       var marked = isHighlighted(state.book, state.chapter, v.v);
-      var row = el("div",{class:"verse-row"+(parOn?" parallel":"")+(!parOn && /[가-힣]/.test(v.text||"") ? " ko" : "")+(isTarget?" highlight":"")+(marked?" user-mark":""), "data-v":String(v.v)});
+      var row = el("div",{class:"verse-row"+(parOn?" parallel":"")+(!parOn && /[가-힣]/.test(v.text||"") ? " ko" : "")+(isTarget?" highlight":"")+(marked?" user-mark":"")+(isPinned(state.book, state.chapter, v.v)?" pinned":""), "data-v":String(v.v)});
       var btnHolder = row;
       if(parOn){
         var left = el("div",{class:"par-col left" + (/[가-힣]/.test(v.text||"") ? " ko" : " latin")},[
@@ -2286,7 +2351,10 @@ function renderReading(){
           if(e.button !== undefined && e.button > 0) return;
           clearPressTimer();
           g = { x0:e.clientX, y0:e.clientY, t0:Date.now(), scrollY0:(window.pageYOffset || 0),
-                selectingAtPress:isSelecting(), longFired:false,
+                selectingAtPress:isSelecting(), longFired:false, moved:false,
+                /* 듣는 중 두 번 톡톡: 따라 읽기로 화면이 저절로 올라가는 중에도 탭으로 인정하되,
+                   손가락으로 휙 넘긴 화면을 짚어 멈춘 터치는 빼기 */
+                listenOk: !((Date.now() - _lastTouchMoveAt) < 1500 && (Date.now() - _lastScrollAt) < FLING_GUARD_MS),
                 /* 관성 스크롤이 흐르는 중에 짚은 터치는 스크롤을 멈추려는 동작이지 탭이 아니다 */
                 valid: (Date.now() - _lastScrollAt) > FLING_GUARD_MS };
           if(g.valid && !g.selectingAtPress){
@@ -2299,14 +2367,21 @@ function renderReading(){
           }
         });
         row.addEventListener("pointermove", function(e){
-          if(!g || !g.valid) return;
-          if(Math.abs(e.clientX - g.x0) > TOUCH_SLOP || Math.abs(e.clientY - g.y0) > TOUCH_SLOP) cancelCandidate();
+          if(!g) return;
+          if(Math.abs(e.clientX - g.x0) > TOUCH_SLOP || Math.abs(e.clientY - g.y0) > TOUCH_SLOP){ g.moved = true; cancelCandidate(); }
         });
         row.addEventListener("pointerup", function(e){
           if(!g) return;
           clearPressTimer();
           var cur = g; g = null;
           if(cur.longFired) return;                       /* 꾹 누르기로 이미 처리됨 */
+          /* 오디오·음성으로 듣는 중(고르는 중이 아닐 때): 한 번 탭 = 넓게 보기, 두 번 톡톡 = 📌 그 절 표시 */
+          if(!cur.selectingAtPress && isListeningNow()){
+            if(cur.moved || !cur.listenOk) return;
+            if(Math.abs(e.clientX - cur.x0) > TOUCH_SLOP || Math.abs(e.clientY - cur.y0) > TOUCH_SLOP) return;
+            listenTap(v, row, toggleImmersive);
+            return;
+          }
           if(!cur.valid) return;
           if(Math.abs(e.clientX - cur.x0) > TOUCH_SLOP || Math.abs(e.clientY - cur.y0) > TOUCH_SLOP) return;
           if(Math.abs((window.pageYOffset || 0) - cur.scrollY0) > SCROLL_EPS || _lastScrollAt > cur.t0) return;
@@ -2389,6 +2464,7 @@ function renderReading(){
       var bar = el("div",{class:"audio-bar"});
       bar.appendChild(audio); /* 오디오는 화면이 바뀌어도 하나를 계속 쓴다(옮겨 붙이기만 함) */
       bar.appendChild(setupAudioFollow(audio, audioFile, forBook, forChapter));
+      bar.appendChild(makePinBtn());
       document.body.appendChild(bar);
       state._audioBarEl = bar;
       positionSelBar();
@@ -2499,7 +2575,8 @@ function setupMediaSession(){
   on("play", function(){ if(player.el) player.el.play(); });
   on("pause", function(){ if(player.el) player.el.pause(); });
   on("previoustrack", function(){ playerStep(-1, true); });
-  on("nexttrack", function(){ playerStep(1, true); });
+  /* 이어폰 ⏭(보통 이어폰을 두 번 톡톡) · 잠금화면 ⏭ : 설정에 따라 다음 장 또는 📌 표시 */
+  on("nexttrack", function(){ if(getEarBtn() === "pin") pinNow("ear"); else playerStep(1, true); });
   on("seekbackward", function(d){ if(player.el) player.el.currentTime = Math.max(0, player.el.currentTime - ((d && d.seekOffset) || 10)); });
   on("seekforward", function(d){ if(player.el) player.el.currentTime = Math.min(player.el.duration || 1e9, player.el.currentTime + ((d && d.seekOffset) || 10)); });
   on("seekto", function(d){ if(player.el && d && typeof d.seekTime === "number") player.el.currentTime = d.seekTime; });
@@ -2868,7 +2945,7 @@ function ttsSpeakCurrent(){
   u.lang = /[가-힣]/.test(text) ? "ko-KR" : "en-US";
   var voice = ttsPickVoice(u.lang); if(voice) u.voice = voice;
   u.rate = ttsRate();
-  u.onstart = function(){ if(gen === tts.gen){ ttsMark(v.v); ttsUpdateUI(); } };
+  u.onstart = function(){ if(gen === tts.gen){ tts.startedAt = Date.now(); ttsMark(v.v); ttsUpdateUI(); } };
   u.onend = function(){ if(gen !== tts.gen || !tts.on) return; tts.idx++; ttsSpeakCurrent(); };
   u.onerror = function(e){
     if(gen !== tts.gen || !tts.on) return;
@@ -2928,7 +3005,7 @@ function buildTtsBar(book, chapter){
       ttsStart(book, chapter, firstSel ? Number(firstSel.dataset.v) : null);
     }
   }},["▶"]));
-  bar.appendChild(el("div",{class:"tts-info"},[el("b",{},["🗣 음성 듣기 · " + (b ? b.ko : "") + " " + chapter + "장"]), el("span",{},[""])]));
+  bar.appendChild(el("div",{class:"tts-info"},[el("b",{},["🗣 " + (b ? b.ko : "") + " " + chapter + "장"]), el("span",{},[""])]));
   bar.appendChild(el("button",{class:"tts-rate", title:"읽는 속도", onclick:function(){
     var r = ttsRate(), i = TTS_RATES.indexOf(r);
     var nr = TTS_RATES[(i + 1) % TTS_RATES.length];
@@ -2943,9 +3020,223 @@ function buildTtsBar(book, chapter){
     else if(tts.on && tts.verses[tts.idx]) ttsMark(tts.verses[tts.idx].v, true);
   });
   bar.appendChild(fb);
+  bar.appendChild(makePinBtn());
   setTimeout(ttsUpdateUI, 0);
   return bar;
 }
+/* ---------- 📌 듣는 중 표시 ---------- */
+function isListeningNow(){ return !!(tts.on || (player.el && !player.el.paused && player.book)); }
+/* 반응 시간: 귀로 듣고 "이 말씀!" 하고 누르기까지 걸리는 시간만큼 앞으로 당겨서,
+   절이 막 바뀐 직후에 누르면 방금 끝난 절을 표시한다 */
+var PIN_REACT_SEC = 0.7;
+/* 지금 들리는 절: 음성 읽기면 읽고 있는 절, MP3면 재생 위치로 찾은 절(따라 읽기와 같은 계산) */
+async function listeningVerse(){
+  if(tts.on && tts.verses.length){
+    var i = Math.min(tts.idx, tts.verses.length - 1);
+    if(i > 0 && tts.startedAt && (Date.now() - tts.startedAt) < PIN_REACT_SEC * 1000) i--;
+    var tv = tts.verses[i];
+    return {book:tts.book, chapter:tts.chapter, verse:tv.v, text:tv.text, version:tts.version};
+  }
+  var a = player.el;
+  if(!a || !player.book || a.paused) return null;
+  var b = player.book, c = player.chapter;
+  var t = a.currentTime + 0.12 - PIN_REACT_SEC * (a.playbackRate || 1);
+  var tm = _verseTimingCache[b + "|" + c], nums, starts;
+  if(tm){ nums = tm.nums; starts = tm.starts; }
+  else {
+    /* 아직 오디오 분석 전(화면이 꺼져 있었음 등) → 글자 수 비율로 어림 */
+    var vs = await audioWeightVerses(b, c);
+    if(!vs.length) return null;
+    nums = vs.map(function(v){ return v.v; });
+    var weights = vs.map(function(v){ return spokenWeight(String(v.text||"").replace(/\s+\/\s*[㉠-㉭㈀-㈍①-⑳ⓐ-ⓩ⒜-⒵*].*$/, "")); });
+    starts = proportionalStarts(weights, (a.duration && isFinite(a.duration)) ? a.duration : 300);
+  }
+  var idx = 0;
+  for(var k=0;k<starts.length;k++){ if(starts[k] <= t) idx = k; else break; }
+  var verse = nums[idx], text = "";
+  try{
+    var cv = await getChapterVerses(state.version, b, c);
+    for(var j=0;j<(cv||[]).length;j++){ if(cv[j].v === verse){ text = cv[j].text; break; } }
+  }catch(e){}
+  return {book:b, chapter:c, verse:verse, text:text, version:state.version};
+}
+/* 테스트·점검용 */
+window.__pinDebug = { timing: function(){ return _verseTimingCache; }, ttsVerse: function(){ return tts.verses[tts.idx] && tts.verses[tts.idx].v; }, ttsOn: function(){ return tts.on; } };
+function pinBuzz(){ try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){} }
+/* 화면이 꺼진 채 이어폰으로 표시했을 때 "됐다"는 걸 귀로 알 수 있게 아주 짧고 작은 소리 */
+var _pinAudioCtx = null;
+function pinBeep(){
+  try{
+    var C = window.AudioContext || window.webkitAudioContext; if(!C) return;
+    if(!_pinAudioCtx) _pinAudioCtx = new C();
+    var ctx = _pinAudioCtx; if(ctx.state === "suspended" && ctx.resume) ctx.resume();
+    [0, 0.13].forEach(function(dt){
+      var o = ctx.createOscillator(), g = ctx.createGain(), t0 = ctx.currentTime + 0.02 + dt;
+      o.type = "sine"; o.frequency.value = 1320;
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.12, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
+      o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + 0.1);
+    });
+  }catch(e){}
+}
+function shortRef(p){ var b = bookByNum(p.book); return (b ? b.ko : p.book) + " " + p.chapter + ":" + p.verse; }
+function applyPinUI(p, on){
+  if(state.screen === "reading" && state.book === p.book && state.chapter === p.chapter){
+    var row = document.querySelector('.verse-row[data-v="' + p.verse + '"]');
+    if(row){
+      row.classList.toggle("pinned", on);
+      if(on){ row.classList.remove("pin-flash"); void row.offsetWidth; row.classList.add("pin-flash"); }
+    }
+  }
+  updatePinChip();
+  var pb = document.querySelector(".pin-btn");
+  if(pb && on){ pb.classList.add("bump"); setTimeout(function(){ pb.classList.remove("bump"); }, 700); }
+}
+function updatePinChip(){
+  var chip = state._pinChipEl; if(!chip) return;
+  var n = pinCount();
+  chip.textContent = "📌 " + n;
+  chip.style.display = n ? "" : "none";
+}
+/* 📌 단추·이어폰: 지금 들리는 절을 표시(이미 있으면 그대로 두고 알려만 줌) */
+var _pinBusy = false;
+async function pinNow(src){
+  if(_pinBusy) return;
+  _pinBusy = true;
+  try{
+    var cur = await listeningVerse();
+    if(!cur){ showToast("📌 오디오나 음성으로 듣는 중에 누르면 지금 들리는 구절이 표시돼요"); return; }
+    var isNew = addPin(cur);
+    pinBuzz(); if(src === "ear" || document.hidden) pinBeep();
+    applyPinUI(cur, true);
+    showToast(isNew ? ("📌 " + shortRef(cur) + " 표시했어요") : ("📌 " + shortRef(cur) + "은(는) 이미 표시돼 있어요"));
+  } finally { _pinBusy = false; }
+}
+/* 두 번 톡톡: 누른 그 절을 표시 / 이미 표시된 절이면 해제 */
+function pinToggleVerse(v){
+  var p = {book:state.book, chapter:state.chapter, verse:v.v, text:v.text, version:state.version};
+  if(isPinned(p.book, p.chapter, p.verse)){
+    removePin(p.book, p.chapter, p.verse); applyPinUI(p, false);
+    showToast("📌 " + shortRef(p) + " 표시를 지웠어요");
+  } else {
+    addPin(p); pinBuzz(); applyPinUI(p, true);
+    showToast("📌 " + shortRef(p) + " 표시했어요");
+  }
+}
+/* 듣는 중의 탭: 0.3초 안에 한 번 더 누르면 두 번 톡톡(📌), 아니면 한 번 탭(넓게 보기) */
+var _listenTap = null, DOUBLE_TAP_MS = 320;
+function listenTap(v, row, singleFn){
+  var now = Date.now();
+  if(_listenTap && now - _listenTap.t < DOUBLE_TAP_MS){
+    clearTimeout(_listenTap.timer);
+    var first = _listenTap; _listenTap = null;
+    pinToggleVerse(first.v);
+    return;
+  }
+  if(_listenTap) clearTimeout(_listenTap.timer);
+  _listenTap = {t:now, v:v, timer:setTimeout(function(){ _listenTap = null; singleFn(); }, DOUBLE_TAP_MS)};
+}
+function makePinBtn(){
+  var b = el("button",{class:"follow-btn pin-btn", title:"지금 들리는 구절을 📌 표시(오디오는 계속)"},[el("span",{class:"ic"},["📌"]), el("span",{},["표시"])]);
+  b.addEventListener("click", function(e){
+    e.stopPropagation();
+    if(b._lpFired){ b._lpFired = false; return; }
+    if(!isListeningNow()){
+      if(pinCount()) openPinsModal();
+      else showToast("📌 듣는 중에 누르면 지금 들리는 구절이 표시돼요 (본문 두 번 톡톡도 돼요)");
+      return;
+    }
+    pinNow("btn");
+  });
+  /* 꾹 누르면 표시한 구절 목록 */
+  var lp = null;
+  b.addEventListener("pointerdown", function(){ lp = setTimeout(function(){ lp = null; b._lpFired = true; openPinsModal(); }, 600); });
+  ["pointerup","pointercancel","pointerleave"].forEach(function(ev){ b.addEventListener(ev, function(){ if(lp){ clearTimeout(lp); lp = null; } }); });
+  return b;
+}
+
+/* ---------- 📌 표시한 구절 모아보기: 그날 읽기를 마친 뒤 정리 ---------- */
+function openPinsModal(){
+  var changed = false;
+  function closeAndSync(){
+    backdrop.remove();
+    if(changed && state.screen === "reading") render();
+    else updatePinChip();
+  }
+  var backdrop = el("div",{class:"modal-backdrop", onclick:function(e){ if(e.target===backdrop) closeAndSync(); }});
+  var sheet = el("div",{class:"modal-sheet"});
+  sheet.appendChild(el("h3",{},["📌 표시한 구절"]));
+  var body = el("div",{});
+  sheet.appendChild(body);
+  function draw(){
+    clear(body);
+    var items = allPins();
+    if(!items.length){
+      body.appendChild(el("div",{class:"empty-hint", style:"line-height:1.7;"},["아직 표시한 구절이 없어요.",el("br"),"오디오를 들으며 본문을 두 번 톡톡 치거나, 오디오 줄의 📌 단추를 누르면 여기에 모여요."]));
+      return;
+    }
+    body.appendChild(el("div",{style:"font-size:12.5px; color:var(--text-dim); line-height:1.6; margin-bottom:8px;"},["듣다가 표시한 말씀이에요. 하이라이트·암송·복사로 정리하고, 다 본 구절은 ✕로 지우세요. 한 절씩 어긋났으면 ◀ ▶로 고치세요."]));
+    var lastDay = null;
+    items.forEach(function(p){
+      var day = pinDayKey(p.ts);
+      if(day !== lastDay){ lastDay = day; body.appendChild(el("div",{class:"pin-day"},[pinDayLabel(p.ts)])); }
+      var item = el("div",{class:"highlight-item pin-item"});
+      item.appendChild(el("div",{class:"ref"},["📌 " + refLabel(p.book,p.chapter,p.verse)]));
+      item.appendChild(el("div",{class:"txt"},[p.text || ""]));
+      var acts = el("div",{class:"actions"});
+      var hlOn = isHighlighted(p.book, p.chapter, p.verse);
+      acts.appendChild(el("button",{class:"btn" + (hlOn ? " hl-on" : ""), onclick:function(){
+        var on = toggleHighlight(p.book, p.chapter, p.verse, p.text); changed = true;
+        showToast(on ? "🖍 하이라이트했어요" : "하이라이트를 지웠어요"); draw();
+      }},[hlOn ? "🖍 하이라이트됨" : "🖍 하이라이트"]));
+      acts.appendChild(el("button",{class:"btn", onclick:function(){ sendToAmsong([{book:p.book, chapter:p.chapter, verse:p.verse, text:p.text}]); }},["📖 암송"]));
+      acts.appendChild(el("button",{class:"btn", onclick:function(){
+        copyText(formatSelectionForCopy([{book:p.book, chapter:p.chapter, verse:p.verse, text:p.text}], versionLabelOf(p.version))).then(function(){ showToast("복사됐어요"); });
+      }},["📋 복사"]));
+      acts.appendChild(el("button",{class:"btn", onclick:function(){ backdrop.remove(); goReading(p.book, p.chapter, p.verse); }},["📄 본문"]));
+      function shift(d){
+        getChapterVerses(p.version && state.lfaFiles[p.version] ? p.version : state.version, p.book, p.chapter).then(function(vs){
+          vs = vs || [];
+          var i = -1; for(var j=0;j<vs.length;j++){ if(vs[j].v === p.verse){ i = j; break; } }
+          var n = vs[i + d];
+          if(!n){ showToast(d < 0 ? "이 장의 첫 절이에요" : "이 장의 마지막 절이에요"); return; }
+          if(isPinned(p.book, p.chapter, n.v)){ showToast(n.v + "절은 이미 표시돼 있어요"); return; }
+          var ts = p.ts;
+          removePin(p.book, p.chapter, p.verse);
+          addPin({book:p.book, chapter:p.chapter, verse:n.v, text:n.text, version:p.version});
+          pinMap[highlightKey(p.book, p.chapter, n.v)].ts = ts; lsSet(LS_PINS, pinMap);
+          changed = true; draw();
+        });
+      }
+      acts.appendChild(el("button",{class:"btn btn-ghost", title:"앞 절로", onclick:function(){ shift(-1); }},["◀"]));
+      acts.appendChild(el("button",{class:"btn btn-ghost", title:"뒤 절로", onclick:function(){ shift(1); }},["▶"]));
+      acts.appendChild(el("button",{class:"btn btn-ghost", style:"color:var(--danger);", title:"목록에서 지우기", onclick:function(){
+        removePin(p.book, p.chapter, p.verse); changed = true; draw();
+      }},["✕"]));
+      item.appendChild(acts);
+      body.appendChild(item);
+    });
+    var all = allPins();
+    body.appendChild(el("button",{class:"btn btn-primary", style:"width:100%; margin-top:10px;", onclick:function(){
+      var text = all.map(function(p){ return refLabel(p.book,p.chapter,p.verse) + " " + p.text; }).join("\n\n");
+      copyText(text).then(function(){ showToast("📌 " + all.length + "개 구절을 복사했어요"); });
+    }},["📋 모두 복사 (" + all.length + "개)"]));
+    var armed = false;
+    var clrBtn = el("button",{class:"btn btn-ghost", style:"width:100%; margin-top:6px; color:var(--danger);", onclick:function(){
+      if(!armed){ armed = true; clrBtn.textContent = "⚠️ 표시를 모두 지울까요? 한 번 더 누르세요"; return; }
+      pinMap = {}; lsSet(LS_PINS, pinMap); changed = true; draw(); showToast("📌 표시를 모두 지웠어요");
+    }},["🗑 표시 모두 지우기"]);
+    body.appendChild(clrBtn);
+  }
+  draw();
+  sheet.appendChild(el("button",{class:"btn btn-ghost", style:"margin-top:6px; width:100%;", onclick:closeAndSync},["닫기"]));
+  backdrop.appendChild(sheet);
+  document.body.appendChild(backdrop);
+}
+function versionLabelOf(key){
+  var info = key && state.lfaFiles && state.lfaFiles[key];
+  return info ? labelForFile(info.displayName) : null;
+}
+
 /* MP3를 틀면 음성 읽기는 멈춤 */
 document.addEventListener("play", function(e){ if(e.target && e.target.tagName === "AUDIO" && tts.on) ttsPause(); }, true);
 
@@ -3089,6 +3380,14 @@ var MANUAL_SECTIONS = [
     "**1.0x** 단추로 읽는 속도를 바꿀 수 있어요. 구절을 골라 둔 채 ▶를 누르면 그 절부터 읽습니다.",
     "음성으로 읽는 동안에는 화면이 꺼지지 않게 해 둡니다(휴대폰에 따라 화면이 꺼지면 음성이 멈출 수 있어서). 화면을 끄고 듣고 싶으면 MP3 오디오를 추가하세요.",
     "목소리는 휴대폰에 들어 있는 음성을 씁니다. 삼성폰은 설정 → 일반 → 텍스트 음성 변환에서 바꿀 수 있어요."
+  ]},
+  {title:"📌 듣는 중에 구절 표시하기 (멈추지 않고)", items:[
+    "오디오나 음성으로 들으며 읽다가 **다시 묵상하거나 암송하고 싶은 말씀**이 나오면, 멈추지 않고 표시해 두었다가 그날 읽기를 마친 뒤 모아서 볼 수 있어요.",
+    "**본문을 두 번 톡톡** 치면 → 그 절에 📌가 붙습니다. (듣는 중에만 동작. 한 번 탭은 예전처럼 넓게 보기, 표시된 절을 다시 두 번 톡톡 치면 표시가 지워져요)",
+    "**오디오 줄의 📌 표시 단추** → 지금 들리고 있는 절이 표시됩니다. 막 다음 절로 넘어간 순간에 누르면 방금 들은 절이 표시돼요.",
+    "**화면을 끄고 블루투스 이어폰으로 들을 때** → **⋯** → **🎧 이어폰 ⏭ 버튼**을 **📌 표시**로 바꾸면, 이어폰의 '다음 곡' 동작(대부분 이어폰을 두 번 톡톡)이나 잠금화면의 ⏭ 버튼으로 지금 들리는 절이 표시되고 '삐빅' 소리가 납니다(MP3 오디오일 때).",
+    "다 읽은 뒤에는 본문 위쪽의 **📌 숫자** 단추(또는 📌 단추를 꾹 누르기, **⋯** → **📌 듣다가 표시한 구절 보기**)를 누르세요. 날짜별로 모여 있고, 거기서 **🖍 하이라이트 · 📖 암송 · 📋 복사 · 📄 본문**으로 정리하고 다 본 구절은 **✕**로 지웁니다.",
+    "오디오 위치로 찾은 절이라 가끔 한 절 앞뒤로 어긋날 수 있어요. 그럴 땐 목록에서 **◀ ▶**로 고치세요."
   ]},
   {title:"✅ 읽음 표시", items:[
     "본문 위쪽의 **읽음으로 표시**를 체크하면 그 장을 읽은 것으로 기록되고, 장 번호 버튼의 색이 바뀝니다.",
@@ -3234,6 +3533,20 @@ function openSettingsModal(){
     el("div",{class:"label"},["📚 첫 화면"]),
     el("div",{class:"controls"},[ lmBtn("category","분류별"), lmBtn("simple","구약·신약 목록") ])
   ]));
+  /* 이어폰·잠금화면의 ⏭(다음) 버튼이 할 일 */
+  var earBtns = {};
+  function earBtn(key, label){
+    var b = el("button",{class:"btn" + (getEarBtn() === key ? " active" : ""), onclick:function(){
+      lsSet(LS_EARBTN, key);
+      Object.keys(earBtns).forEach(function(k){ earBtns[k].classList.toggle("active", k === key); });
+      showToast(key === "pin" ? "🎧 이어폰·잠금화면 ⏭ = 지금 들리는 구절 📌 표시" : "🎧 이어폰·잠금화면 ⏭ = 다음 장");
+    }},[label]);
+    earBtns[key] = b; return b;
+  }
+  sheet.appendChild(el("div",{class:"theme-row", style:"flex-wrap:wrap;"},[
+    el("div",{class:"label"},["🎧 이어폰 ⏭ 버튼"]),
+    el("div",{class:"controls"},[ earBtn("next","다음 장"), earBtn("pin","📌 표시") ])
+  ]));
   /* 화면 색 고르기 */
   var themeBtns = {};
   function themeBtn(key, label){
@@ -3329,6 +3642,7 @@ function openSettingsModal(){
   /* 본문 검색은 이제 헤더의 🔍 아이콘으로 바로 열 수 있어서(더 빨리 쓸 수 있도록), 여기서는 뺐다. */
   var highlightsBtn = el("button",{class:"btn", style:"margin-top:10px; width:100%;", onclick:function(){ backdrop.remove(); openHighlightsModal(); }},["⭐ 하이라이트 모아보기"]);
   sheet.appendChild(highlightsBtn);
+  sheet.appendChild(el("button",{class:"btn", style:"margin-top:6px; width:100%;", onclick:function(){ backdrop.remove(); openPinsModal(); }},["📌 듣다가 표시한 구절 보기" + (pinCount() ? " (" + pinCount() + ")" : "")]));
   /* 예전 버전에서는 장을 열기만 해도 자동으로 읽음 표시가 됐었으므로, 그동안 쌓인 읽음 표시를
      한 번에 지울 수 있게 한다. 실수로 누르지 않도록 두 번 눌러야 지워진다. */
   var resetReadArmed = false;

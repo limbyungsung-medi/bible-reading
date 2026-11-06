@@ -301,6 +301,7 @@
   .plan-actions .btn-primary{flex:2 1 auto;}
   .plan-rest{font-size:15px; color:var(--text); margin:8px 0 8px; line-height:1.5;}
   .plan-pending{display:block; width:100%; margin-top:8px; text-align:left; border:0; border-top:1px dashed var(--border); background:none; padding:9px 2px 2px; color:var(--text-dim); font-size:13px; font-weight:700; cursor:pointer;}
+  .plan-slim{border:1.5px solid var(--border); border-radius:12px; padding:10px 12px; margin:0 0 12px; background:var(--surface); color:var(--accent);}
   .plan-sum{font-size:13px; color:var(--text-dim); margin:-2px 2px 4px; font-weight:700;}
   .plan-row{display:flex; align-items:center; gap:10px; padding:9px 6px; border-bottom:1px solid var(--border); cursor:pointer; font-family:var(--font-ui);}
   .plan-row .pd{flex:none; width:64px; font-size:13px; color:var(--text-dim); font-variant-numeric:tabular-nums;}
@@ -355,7 +356,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-11-04-2">
+<meta name="app-build" content="2026-11-06-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1965,6 +1966,15 @@ function planMarkDay(d, val){ d.chapters.forEach(function(x){ markRead(x[0], x[1
 function renderPlanCard(){
   var info = planInfo();
   if(!info) return null;
+  /* 오늘 분량을 다 읽었으면 카드를 숨긴다(내일이 되면 다시 나옴). 밀린 날이 있을 때만 한 줄로 알려 준다.
+     통독표 전체는 ⋯ 설정의 "📅 통독표 보기"로 언제든 볼 수 있다. */
+  if(!info.missing && info.todayDay && info.todayDay.chapters.length && planDayDone(info.todayDay)){
+    if(!info.pending.length) return null;
+    var f0 = info.pending[0];
+    return el("button",{class:"plan-pending plan-slim", onclick:function(){ openPlanModal(f0.date); }},[
+      "⏳ 밀린 통독 " + info.pending.length + "일 · " + planDateLabel(f0.date) + " " + planRangeLabel(f0) + " ›"
+    ]);
+  }
   var card = el("div",{class:"plan-card"});
   card.appendChild(el("div",{class:"plan-top"},[
     el("b",{},["📅 오늘의 통독"]),
@@ -1984,7 +1994,7 @@ function renderPlanCard(){
     if(!done){
       var fu = planFirstUnread(d);
       acts.appendChild(el("button",{class:"btn btn-primary", onclick:function(){ planGo(d); }},["▶ " + (n ? "이어서 읽기 (" : "읽기 시작 (") + bookByNum(fu[0]).ko + " " + fu[1] + "장)"]));
-      acts.appendChild(el("button",{class:"btn", onclick:function(){ planMarkDay(d, true); showToast("🎉 오늘 통독을 다 읽었어요"); render(); }},["✓ 다 읽음"]));
+      acts.appendChild(el("button",{class:"btn", onclick:function(){ planMarkDay(d, true); showToast("🎉 오늘 통독을 다 읽었어요 · 내일 다시 보여 드릴게요"); render(); }},["✓ 다 읽음"]));
     } else if(info.next){
       acts.appendChild(el("button",{class:"btn", onclick:function(){ planGo(info.next); }},["다음 분량 미리 읽기: " + planDateLabel(info.next.date) + " " + planRangeLabel(info.next)]));
     }
@@ -3663,6 +3673,7 @@ var MANUAL_SECTIONS = [
     "교회 통독표대로 읽으시면 **⋯** → **📅 교회 통독표**에서 **주5일** 또는 **주6일**을 고르세요. (자기 계획대로 읽으시는 분은 **끄기** 그대로 두시면 됩니다)",
     "첫 화면 맨 위에 **📅 오늘의 통독** 카드가 나옵니다. 오늘 읽을 범위와 장 번호가 보이고, **▶ 읽기 시작**을 누르면 그 장이 열립니다. 읽은 장은 색이 바뀝니다.",
     "장을 다 읽으면 본문 맨 아래 **읽음으로 표시**를 누르세요(위쪽 체크와 같음). 그날 분량을 다 읽으면 🎉 알림이 나옵니다. 카드의 **✓ 다 읽음**으로 한 번에 표시할 수도 있어요.",
+    "그날 분량을 다 읽으면 카드가 사라지고, 다음 날 새 분량으로 다시 나옵니다. 1년 일정은 **⋯** → **📅 통독표 보기**에서 언제든 볼 수 있어요.",
     "토·일·공휴일처럼 쉬는 날에는 다음 분량이 안내되고, 통독표를 켠 뒤 못 읽은 날이 있으면 **⏳ 밀린 분량**으로 알려 줍니다.",
     "카드의 **통독표 ›**를 누르면 1년 전체 일정과 읽은 날(✓)이 보입니다. 날짜를 누르면 그날 분량으로 가고, 오른쪽 단추로 그날을 읽음/취소할 수 있어요.",
     "오디오로 들으실 때 그날 분량에서 멈추고 싶으면 통독표 화면의 **🎧 오늘 분량을 다 들으면**을 **오디오 멈춤**으로 바꾸세요(기본은 계속 듣기)."
@@ -3834,6 +3845,10 @@ function openSettingsModal(){
     el("div",{class:"label"},["📅 교회 통독표"]),
     el("div",{class:"controls"},[ planBtn("off","끄기"), planBtn("5","주5일"), planBtn("6","주6일") ])
   ]));
+  sheet.appendChild(el("button",{class:"btn", style:"width:100%; margin:-4px 0 12px;", onclick:function(){
+    if(getPlan().type === "off"){ showToast("먼저 주5일이나 주6일을 골라 주세요"); return; }
+    backdrop.remove(); openPlanModal();
+  }},["📅 통독표 보기 (1년 일정·읽은 날)"]));
   /* 이어폰·잠금화면의 ⏭(다음) 버튼이 할 일 */
   var earBtns = {};
   function earBtn(key, label){

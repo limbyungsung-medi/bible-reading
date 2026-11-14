@@ -103,6 +103,10 @@
      누를 수 있도록 알약 모양의 큰 버튼으로 만든다. */
   .crumbs span.crumb-home{display:inline-flex; align-items:center; gap:4px; min-height:36px; padding:6px 14px; border-radius:100px; border:1.5px solid var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:15px;}
   .crumbs span.crumb-home:active{transform:scale(.96);}
+  /* 지금 절 / 끝 절 (분수처럼 위아래로) */
+  .crumbs .verse-pos{display:inline-flex; flex-direction:column; align-items:center; justify-content:center; min-width:38px; padding:2px 8px; border:1.5px solid var(--ctrl-border); border-radius:10px; background:var(--ctrl-bg); font-family:var(--font-ui); line-height:1.1; cursor:pointer; font-variant-numeric:tabular-nums;}
+  .crumbs .verse-pos b{font-size:14px; font-weight:800; color:var(--text);}
+  .crumbs .verse-pos i{font-style:normal; font-size:13px; font-weight:700; color:var(--text-dim); border-top:1.5px solid var(--text-dim); padding-top:1px; min-width:22px; text-align:center;}
   main{flex:1; padding:16px 14px 90px;}
   .center-pane{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; gap:14px; padding:20px;}
   .center-pane h1{font-size:20px; margin:0;}
@@ -356,7 +360,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-11-06-1">
+<meta name="app-build" content="2026-11-14-1">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1718,6 +1722,13 @@ function updateCrumbs(){
           parts.push(el("span",{},["›"]));
           parts.push(el("span",{},[targetLabel()+"절"]));
         }
+        /* 이 장이 몇 절까지 있는지: 위는 지금 화면 맨 위의 절, 아래는 이 장의 끝 절(누르면 절 고르기) */
+        var vp = el("span",{class:"verse-pos", title:"지금 절 / 이 장의 끝 절 (누르면 절 고르기)", onclick:function(){ goVerses(state.book, state.chapter); }},[
+          el("b",{},[""]), el("i",{},[""])
+        ]);
+        state._vpEl = vp;
+        parts.push(vp);
+        setTimeout(updateVersePos, 0);
       } else {
         parts.push(el("span",{},[state.chapter+"장"]));
       }
@@ -1727,6 +1738,29 @@ function updateCrumbs(){
   }
   parts.forEach(function(p){ $crumbs.appendChild(p); });
 }
+
+/* 화면 맨 위(제목줄 바로 아래)에 보이는 절 번호와 이 장의 끝 절 번호를 보여 준다 */
+function updateVersePos(){
+  var vp = state._vpEl;
+  if(!vp || !vp.isConnected || state.screen !== "reading") return;
+  var lv = state._lastVerse, last = (lv && lv.key === state.book + "|" + state.chapter) ? lv.v : 0;
+  vp.style.visibility = last ? "visible" : "hidden";
+  if(!last) return;
+  var h = document.querySelector("header"), ph = document.querySelector(".par-head");
+  var top = (h && !document.body.classList.contains("immersive") ? h.getBoundingClientRect().bottom : 0) + (ph ? ph.offsetHeight : 0) + 4;
+  var rows = document.querySelectorAll("main .verse-row"), cur = null;
+  for(var i=0;i<rows.length;i++){
+    if(rows[i].getBoundingClientRect().bottom > top + 8){ cur = rows[i].getAttribute("data-v"); break; }
+  }
+  if(!cur && rows.length) cur = rows[rows.length-1].getAttribute("data-v");
+  vp.firstChild.textContent = cur || "1";
+  vp.lastChild.textContent = String(last);
+}
+var _vpRaf = 0;
+window.addEventListener("scroll", function(){
+  if(state.screen !== "reading" || _vpRaf) return;
+  _vpRaf = requestAnimationFrame(function(){ _vpRaf = 0; updateVersePos(); });
+}, {passive:true});
 
 function updateHeaderForConnected(){
   $menuBtn.style.display = "flex";
@@ -2690,6 +2724,9 @@ function renderReading(){
       var targetEl = tRows.length > 1 ? tRows[Math.floor((tRows.length-1)/2)] : document.getElementById("targetVerseRow");
       if(targetEl) targetEl.scrollIntoView({block:"center"});
     }
+    /* 제목줄의 "지금 절 / 끝 절" 표시 */
+    state._lastVerse = {key: state.book + "|" + state.chapter, v: verses.length ? verses[verses.length-1].v : 0};
+    updateVersePos();
   });
 
   /* 하단 바: 이전/다음 장 내비게이션은 바로 그려두고(오디오 유무를 기다리지 않음),

@@ -175,6 +175,9 @@
   :root[data-kofont="serif"]{--font-ko:"Noto Serif KR",serif; --font-bible:"Source Serif 4",Georgia,"Noto Serif KR",serif;}
   /* 한글이 들어 있는 절(.ko)은 절 번호까지 한글 글꼴로, 영어 절은 세리프 그대로 */
   .verse-row.ko .verse-num, .verse-row.ko .verse-text, .par-col.ko .verse-num, .par-col.ko .verse-text{font-family:var(--font-ko);}
+  /* 중국어 본문: 한자가 또렷한 고딕(휴대폰에 들어 있는 중국어 글꼴) */
+  .verse-row.zh .verse-num, .verse-row.zh .verse-text, .par-col.zh .verse-num, .par-col.zh .verse-text, .v.zh{font-family:"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Pretendard Variable",Pretendard,sans-serif;}
+  .verse-row.zh .verse-text, .par-col.zh .verse-text{letter-spacing:.02em;}
   .verse-num{font-family:var(--font-serif); color:var(--verse-num-color); font-weight:600; font-size:12.5px; min-width:15px; padding-top:2px; text-align:left;}
   .verse-text{flex:1; font-family:var(--font-serif);}
   /* 두 번역본 대조 보기: 왼쪽/오른쪽 반반, 절마다 가로 구분선. 한 절의 길이가 서로 달라도
@@ -360,7 +363,7 @@
   .stat-pill{font-size:11px; color:var(--text-dim); background:var(--accent-soft); padding:3px 9px; border-radius:100px;}
 </style>
 
-<meta name="app-build" content="2026-11-17-1">
+<meta name="app-build" content="2026-11-17-2">
 <meta name="theme-color" content="#7c2f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -472,7 +475,11 @@ var KNOWN_LABELS = {
   "개역한글":"개역한글판", "개역개정":"개역개정판",
   "engesv":"ESV","enggnt":"GNT(Good News)",
   "engniv":"NIV","engnasb":"NASB","engmsg":"The Message","engnkjv":"NKJV","engkjv":"KJV",
-  "enghcsb":"HCSB","engcev":"CEV","engisv":"ISV","engnlt":"NLT","engnrsv":"NRSV","engtniv":"TNIV"
+  "enghcsb":"HCSB","engcev":"CEV","engisv":"ISV","engnlt":"NLT","engnrsv":"NRSV","engtniv":"TNIV",
+  /* 중국어 성경 (2026-11-17: chnunisimpnospace가 중국어 성경이라고 알려 줌) */
+  "chnunisimpnospace":"중국어 화합본(简体)", "chnunisimp":"중국어 화합본(简体)",
+  "chnunitradnospace":"중국어 화합본(繁體)", "chnunitrad":"중국어 화합본(繁體)",
+  "chnncv":"중국어 신역본(新譯本)"
 };
 var AUDIO_VERSION_HINT = "kornkrv"; /* 오디오는 개역개정 낭독 */
 
@@ -1148,6 +1155,13 @@ function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); 
    버튼 없이 완전히 자동으로(조용히) 다시 열린다. */
 var supportsFSAccess = false;
 
+/* 본문 글자에 따라 글꼴 묶음을 고른다: 한글이 있으면 ko, 한글 없이 한자(중국어)면 zh */
+function scriptClass(t){
+  t = t || "";
+  if(/[가-힣]/.test(t)) return "ko";
+  if(/[\u3400-\u9fff]/.test(t)) return "zh";
+  return "";
+}
 function labelForFile(filenameNoExt){
   var lower = filenameNoExt.toLowerCase();
   if(labelMap[lower]) return labelMap[lower];
@@ -1166,16 +1180,26 @@ function pickParallelVersion(saved){
   if(!keys.length) return null;
   if(saved && keys.indexOf(saved) >= 0) return saved;
   keys.sort(versionKeyCompare);
-  var curKo = state.lfaFiles[state.version] ? isKoreanLabel(labelForFile(state.lfaFiles[state.version].displayName)) : true;
+  var curKo = state.lfaFiles[state.version] ? versionLang(state.version) === "ko" : true;
   var niv = keys.filter(function(k){ return /niv/i.test(k); })[0];
   if(curKo && niv) return niv;
-  var other = keys.filter(function(k){ return isKoreanLabel(labelForFile(state.lfaFiles[k].displayName)) !== curKo; })[0];
+  var other = keys.filter(function(k){ return (versionLang(k) === "ko") !== curKo; })[0];
   return other || keys[0];
+}
+/* 번역본의 언어: "ko" 한글 / "zh" 중국어(파일 이름이 chn…) / "en" 그 밖(영어 등) */
+function versionLang(key){
+  var k = String(key || "").toLowerCase();
+  var info = state.lfaFiles && state.lfaFiles[key];
+  var name = String(info ? info.displayName : key).toLowerCase();
+  if(/^chn/.test(k) || /^chn/.test(name)) return "zh";
+  var label = info ? labelForFile(info.displayName) : String(key);
+  return isKoreanLabel(label) ? "ko" : "en";
 }
 function versionKeyCompare(a, b){
   var la = state.lfaFiles[a] ? labelForFile(state.lfaFiles[a].displayName) : a;
   var lb = state.lfaFiles[b] ? labelForFile(state.lfaFiles[b].displayName) : b;
-  var ka = isKoreanLabel(la) ? 0 : 1, kb = isKoreanLabel(lb) ? 0 : 1;
+  var LR = {ko:0, zh:1, en:2};
+  var ka = LR[versionLang(a)], kb = LR[versionLang(b)];
   if(ka !== kb) return ka - kb;
   /* 한글 성경은 사용자가 정해 준 순서(1 개역한글판 … 15 현대어성경)대로 */
   var oa = KOREAN_ORDER.indexOf(String(a).toLowerCase()), ob = KOREAN_ORDER.indexOf(String(b).toLowerCase());
@@ -2496,7 +2520,7 @@ function renderReading(){
         currentItems = [];
         items.forEach(function(h){
           var t = byNum[h.verse];
-          body.appendChild(el("div",{class:"v" + (/[가-힣]/.test(t||"") ? " ko" : "")},[el("b",{},[String(h.verse)]), t !== undefined ? t : "(이 역본에는 없는 절)"]));
+          body.appendChild(el("div",{class:"v" + (scriptClass(t) ? " " + scriptClass(t) : "")},[el("b",{},[String(h.verse)]), t !== undefined ? t : "(이 역본에는 없는 절)"]));
           if(t !== undefined) currentItems.push({book:h.book, chapter:h.chapter, verse:h.verse, text:t});
         });
       }).catch(function(){ clear(body); body.appendChild(document.createTextNode("이 역본을 읽지 못했어요")); });
@@ -2613,15 +2637,15 @@ function renderReading(){
     verses.forEach(function(v){
       var isTarget = state.targetVerses ? state.targetVerses.indexOf(v.v) >= 0 : (state.targetVerse && v.v === state.targetVerse);
       var marked = isHighlighted(state.book, state.chapter, v.v);
-      var row = el("div",{class:"verse-row"+(parOn?" parallel":"")+(!parOn && /[가-힣]/.test(v.text||"") ? " ko" : "")+(isTarget?" highlight":"")+(marked?" user-mark":"")+(isPinned(state.book, state.chapter, v.v)?" pinned":""), "data-v":String(v.v)});
+      var row = el("div",{class:"verse-row"+(parOn?" parallel":"")+(!parOn && scriptClass(v.text) ? " " + scriptClass(v.text) : "")+(isTarget?" highlight":"")+(marked?" user-mark":"")+(isPinned(state.book, state.chapter, v.v)?" pinned":""), "data-v":String(v.v)});
       var btnHolder = row;
       if(parOn){
-        var left = el("div",{class:"par-col left" + (/[가-힣]/.test(v.text||"") ? " ko" : " latin")},[
+        var left = el("div",{class:"par-col left" + " " + (scriptClass(v.text) || "latin")},[
           el("div",{class:"verse-num"},[String(v.v)]),
           v.text ? verseTextEl(v.text) : el("div",{class:"par-missing"},["(이 번역본에는 없는 절)"])
         ]);
         var t2 = byNum2[v.v];
-        var right = el("div",{class:"par-col right" + (/[가-힣]/.test(t2||"") ? " ko" : " latin")},[
+        var right = el("div",{class:"par-col right" + " " + (scriptClass(t2) || "latin")},[
           el("div",{class:"verse-num"},[String(v.v)]),
           (t2 !== undefined) ? verseTextEl(t2) : el("div",{class:"par-missing"},[verses2 ? "(이 번역본에는 없는 절)" : "(이 번역본에는 이 장이 없어요)"])
         ]);
@@ -3289,7 +3313,8 @@ function ttsSpeakCurrent(){
   var text = ttsCleanText(v.text);
   if(!text.trim()){ tts.idx++; ttsSpeakCurrent(); return; }
   var u = new SpeechSynthesisUtterance(text);
-  u.lang = /[가-힣]/.test(text) ? "ko-KR" : "en-US";
+  var sc = scriptClass(text);
+  u.lang = sc === "ko" ? "ko-KR" : (sc === "zh" ? "zh-CN" : "en-US");
   var voice = ttsPickVoice(u.lang); if(voice) u.voice = voice;
   u.rate = ttsRate();
   u.onstart = function(){ if(gen === tts.gen){ tts.startedAt = Date.now(); ttsMark(v.v); ttsUpdateUI(); } };

@@ -397,7 +397,7 @@
   :root[data-theme="black"] .toast, :root[data-theme="navy"] .toast{background:#1E2552; color:#F3EEE2; border:1px solid rgba(226,196,106,.45); box-shadow:0 6px 20px rgba(0,0,0,.45);}
 </style>
 
-<meta name="app-build" content="2026-11-18-1">
+<meta name="app-build" content="2026-11-18-2">
 <meta name="theme-color" content="#111111">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -827,7 +827,7 @@ function findVersionKey(v){
 function applyPendingGo(){
   var g = pendingGo; if(!g) return false;
   pendingGo = null;
-  try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+  try{ history.replaceState(history.state, "", location.pathname + location.search); }catch(e){}
   var key = findVersionKey(g.ver);
   if(key){ state.version = key; try{ $versionSelect.value = key; }catch(e){} }
   state.fromAmsong = g.from; state.amsongId = g.id || "";
@@ -845,7 +845,7 @@ window.addEventListener("hashchange", function(){
 function markFromBridge(){
   if(/[#&]from=bridge/.test(location.hash || "")){
     try{ sessionStorage.setItem("fromBridge","1"); }catch(e){}
-    if(!/[#&]go=/.test(location.hash)){ try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){} }
+    if(!/[#&]go=/.test(location.hash)){ try{ history.replaceState(history.state, "", location.pathname + location.search); }catch(e){} }
   }
 }
 markFromBridge();
@@ -855,7 +855,7 @@ function backToBridge(){
   try{ sessionStorage.removeItem("fromBridge"); }catch(e){}
   var url = new URL("../bridge/#resume", location.href).href;
   var came = /\/bridge\//.test(document.referrer || "") && history.length > 1;
-  if(came){ history.back(); setTimeout(function(){ location.href = url; }, 700); }
+  if(came){ history.go(-histDepthFromStart()); setTimeout(function(){ location.href = url; }, 700); }
   else location.href = url;
 }
 function backToAmsong(){
@@ -864,7 +864,7 @@ function backToAmsong(){
   var url = amsongUrl() + (state.amsongId ? "#open=" + encodeURIComponent(state.amsongId) : "");
   var cameFromAmsong = /\/bible-memory\//.test(document.referrer || "") && history.length > 1;
   if(cameFromAmsong){
-    history.back();
+    history.go(-histDepthFromStart());
     setTimeout(function(){ location.href = url; }, 700); /* 뒤로 가지 못했을 때만 실행됨 */
   } else {
     location.href = url;
@@ -1897,6 +1897,7 @@ function goReading(bookNum, chapter, targetVerse, targetVerses){
 }
 
 function render(){
+  syncHistory();
   clear($main);
   updateCrumbs();
   if(state.screen === "connect") return renderConnect();
@@ -1905,6 +1906,99 @@ function render(){
   if(state.screen === "verses") return renderVerses();
   if(state.screen === "reading") return renderReading();
 }
+
+/* ---------- 휴대폰 "뒤로 가기" (2026-11-18) ----------
+   예전에는 화면을 바꿔도 브라우저 기록이 하나뿐이라, 뒤로 가기를 누르면 앱이 그냥 닫혔다.
+   이제 화면(책 목록·장 고르기·절 고르기·읽기의 책/장)이 바뀔 때마다 기록을 하나씩 쌓아서,
+   뒤로 가기를 누르면 방금 보던 화면(예: 창세기 5장 → 3장)으로 돌아간다.
+   · 오디오/음성이 저절로 다음 장으로 넘어간 것은 기록을 쌓지 않고 바꿔치기만 한다.
+   · 설정·검색·하이라이트 같은 창이 떠 있으면 뒤로 가기는 그 창만 닫는다.
+   · 맨 처음 화면에서 뒤로 가기: 책 목록이 아니면 책 목록으로, 책 목록이면 "한 번 더 누르면 닫혀요"를 알린 뒤
+     한 번 더 누르면 닫힌다(실수로 앱이 꺼지지 않도록). */
+var _histFromPop = false, _histReplaceNext = false, _histIgnorePop = 0;
+function histKey(){ return [state.screen, state.book || "", state.chapter || "", state.targetVerse || "", (state.targetVerses || []).join(",")].join("|"); }
+function histSnap(depth){
+  return {bibleApp:1, key:histKey(), screen:state.screen, book:state.book, chapter:state.chapter,
+          tv:state.targetVerse || null, tvs:state.targetVerses || null, depth:depth};
+}
+function histDepthFromStart(){ var h = history.state; return ((h && h.bibleApp && h.depth) || 0) + 1; }
+function syncHistory(){
+  var fromPop = _histFromPop, rep = _histReplaceNext;
+  _histFromPop = false; _histReplaceNext = false;
+  if(state.screen === "connect" || fromPop) return;
+  try{
+    var cur = history.state;
+    if(!cur || !cur.bibleApp){ history.replaceState(histSnap(0), ""); return; }
+    if(cur.key === histKey() && !cur.guard) return;
+    if(cur.modal || rep) history.replaceState(histSnap(cur.depth || 0), "");   /* 창 안에서 다른 화면으로 간 경우: 창의 기록을 바꿔치기 */
+    else history.pushState(histSnap((cur.depth || 0) + 1), "");
+  }catch(e){}
+}
+/* 첫 터치 때 맨 밑에 "보호용" 기록을 하나 깔아 둔다(사용자가 손댄 뒤에 만들어야 크롬이 건너뛰지 않는다) */
+var _histGuardMade = false;
+function histMakeGuard(){
+  if(_histGuardMade) return;
+  var cur = history.state;
+  if(!cur || !cur.bibleApp || cur.modal || state.screen === "connect") return;
+  _histGuardMade = true;
+  if(cur.depth !== 0 || cur.guard) return;
+  try{
+    var g = histSnap(0); g.guard = true; g.screen = "letters"; g.key = "guard";
+    history.replaceState(g, "");
+    history.pushState(histSnap(1), "");
+  }catch(e){}
+}
+document.addEventListener("pointerup", histMakeGuard, true);
+document.addEventListener("click", histMakeGuard, true);
+function histTopModal(){ var all = document.querySelectorAll(".modal-backdrop"); return all.length ? all[all.length - 1] : null; }
+window.addEventListener("popstate", function(e){
+  if(_histIgnorePop > 0){ _histIgnorePop--; return; }
+  /* 창이 떠 있으면 그 창만 닫는다 */
+  var m = histTopModal();
+  if(m){
+    try{ m.click(); }catch(err){}            /* 바깥 누르기와 같은 방법으로 닫기(변경 사항 반영) */
+    if(m.isConnected) m.remove();
+    return;
+  }
+  var s = e.state;
+  if(!s || !s.bibleApp) return;
+  if(s.guard){
+    /* 암송앱·전도앱에서 넘어온 경우에는 그 앱으로 바로 돌아간다 */
+    if(state.fromAmsong || isFromBridge()){ try{ history.back(); }catch(err){} return; }
+    if(state.screen !== "letters"){ _histFromPop = true; goLetters(); }
+    showToast("뒤로 버튼을 한 번 더 누르면 앱이 닫혀요");
+    return;
+  }
+  if(s.key === histKey()) return;
+  if(s.screen === "reading" && state.screen === "reading" && s.book === state.book) state._swipeDir = s.chapter < state.chapter ? -1 : 1;
+  _histFromPop = true;
+  if(s.screen === "letters") goLetters();
+  else if(s.screen === "chapters") goChapters(s.book);
+  else if(s.screen === "verses") goVerses(s.book, s.chapter);
+  else if(s.screen === "reading") goReading(s.book, s.chapter, s.tv, s.tvs);
+  else _histFromPop = false;
+});
+/* 창이 열리면 기록 하나, 닫히면(✕·바깥 누르기 등) 그 기록을 다시 빼 둔다 */
+new MutationObserver(function(muts){
+  var touched = false;
+  muts.forEach(function(mu){
+    [mu.addedNodes, mu.removedNodes].forEach(function(list){
+      for(var i=0;i<list.length;i++){ var n = list[i]; if(n.classList && n.classList.contains("modal-backdrop")) touched = true; }
+    });
+  });
+  if(!touched) return;
+  var open = !!histTopModal(), cur = history.state;
+  try{
+    if(open && !(cur && cur.modal)){
+      var base = (cur && cur.bibleApp) ? cur : histSnap(0);
+      var st = {}; for(var k in base) st[k] = base[k];
+      st.modal = true; st.guard = false; st.depth = (base.depth || 0) + 1;
+      history.pushState(st, "");
+    } else if(!open && cur && cur.modal){
+      _histIgnorePop++; history.back();
+    }
+  }catch(e){}
+}).observe(document.body, {childList:true});
 
 function renderConnect(){
   var wrap = el("div",{class:"center-pane"});
@@ -2991,12 +3085,12 @@ function followPlayerOnScreen(fromBook, fromChapter, delta){
   var watching = state.screen === "reading" && state.book === fromBook && state.chapter === fromChapter;
   if(!watching) return;
   if(document.hidden){ _catchUpOnVisible = true; return; }
-  state._swipeDir = delta; goReading(player.book, player.chapter);
+  state._swipeDir = delta; _histReplaceNext = true; goReading(player.book, player.chapter);
 }
 document.addEventListener("visibilitychange", function(){
   if(document.hidden || !_catchUpOnVisible) return;
   _catchUpOnVisible = false;
-  if(state.screen === "reading" && player.book && (state.book !== player.book || state.chapter !== player.chapter)) goReading(player.book, player.chapter);
+  if(state.screen === "reading" && player.book && (state.book !== player.book || state.chapter !== player.chapter)){ _histReplaceNext = true; goReading(player.book, player.chapter); }
 });
 /* 앞/뒤 장 번호 계산(책의 처음·끝을 넘어가면 이전·다음 책으로) */
 async function relativeChapter(book, chapter, delta){
@@ -3309,7 +3403,7 @@ function ttsWake(on){
 document.addEventListener("visibilitychange", function(){
   if(document.hidden) return;
   if(tts.on) ttsWake(true);   /* 화면 켜짐 유지는 다른 앱에 다녀오면 풀리므로 다시 건다 */
-  if(tts.catchUp){ tts.catchUp = false; if(state.screen === "reading" && tts.book && (state.book !== tts.book || state.chapter !== tts.chapter)) goReading(tts.book, tts.chapter); }
+  if(tts.catchUp){ tts.catchUp = false; if(state.screen === "reading" && tts.book && (state.book !== tts.book || state.chapter !== tts.chapter)){ _histReplaceNext = true; goReading(tts.book, tts.chapter); } }
 });
 window.addEventListener("touchmove", function(){ tts.holdUntil = Date.now() + 6000; }, {passive:true});
 function ttsMark(v, force){
@@ -3394,7 +3488,7 @@ async function ttsNextChapter(){
   var watching = state.screen === "reading" && state.book === fromBook && state.chapter === fromChapter;
   if(watching){
     if(document.hidden) tts.catchUp = true;
-    else { state._swipeDir = 1; goReading(t.book, t.chapter); }
+    else { state._swipeDir = 1; _histReplaceNext = true; goReading(t.book, t.chapter); }
   }
   setTimeout(ttsSpeakCurrent, 150);
 }
@@ -3726,7 +3820,9 @@ var MANUAL_SECTIONS = [
     "본문 화면을 손가락으로 **왼쪽으로 밀면 다음 장**, **오른쪽으로 밀면 이전 장**으로 넘어갑니다(책장 넘기듯이).",
     "위아래로 스크롤할 때는 넘어가지 않아요. 옆으로 확실히 밀어주세요.",
     "장의 맨 끝까지 내려가면 **‹ 이전 장 / 다음 장 ›** 버튼도 있습니다.",
-    "책의 마지막 장에서 넘기면 다음 책 1장으로 이어집니다."
+    "책의 마지막 장에서 넘기면 다음 책 1장으로 이어집니다.",
+    "휴대폰의 **뒤로 가기**(◁ 또는 화면 가장자리에서 밀기)를 누르면 방금 보던 장·화면으로 돌아갑니다(예: 3장 → 5장으로 갔다가 뒤로 → 4장 → 3장). 설정·검색 같은 창이 떠 있을 때는 그 창만 닫혀요.",
+    "책 목록에서 뒤로 가기를 누르면 \"한 번 더 누르면 앱이 닫혀요\"가 나오고, 한 번 더 누르면 닫힙니다. 오디오가 저절로 다음 장으로 넘어간 것은 뒤로 가기에 쌓이지 않아요."
   ]},
   {title:"🔍 넓게 보기 (위·아래 숨기기)", items:[
     "본문을 **짧게 한 번 톡** 누르면 위쪽 메뉴와 아래쪽 오디오가 숨겨져 본문을 넓게 볼 수 있어요. 다시 톡 누르면 돌아옵니다.",
@@ -4298,7 +4394,7 @@ var LS_UPDATE_ATTEMPT = "bible_update_attempt_v1"; /* 업데이트 버튼을 눌
 (function(){
   try{
     if(/[?&]v=/.test(location.search)){
-      history.replaceState(null, "", location.pathname + location.hash);
+      history.replaceState(history.state, "", location.pathname + location.hash);
     }
   }catch(e){}
 })();
